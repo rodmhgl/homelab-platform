@@ -60,10 +60,10 @@ spec:
           container.startupProbe
         }
 
-        input_containers contains container {
+        input_containers[container] {
           container := input.review.object.spec.containers[_]
         }
 
-        input_containers contains container {
+        input_containers[container] {
           container := input.review.object.spec.template.spec.containers[_]
         }
