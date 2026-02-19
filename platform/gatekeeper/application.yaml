@@ -35,7 +35,7 @@ spec:
   ignoreDifferences:
     - group: ""
       kind: ValidatingWebhookConfiguration
-      name: <resource-name>
+      name: gatekeeper-mutating-webhook-configuration
       jqPathExpressions:
         - .webhooks[].namespaceSelector    
   destination:
