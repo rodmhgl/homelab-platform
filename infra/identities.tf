@@ -15,12 +15,11 @@ resource "azurerm_user_assigned_identity" "crossplane" {
 # Federated credential: allows the Crossplane provider ServiceAccount to
 # exchange its cluster-issued OIDC token for an Azure access token.
 resource "azurerm_federated_identity_credential" "crossplane" {
-  name                = "crossplane-provider-azure"
-  resource_group_name = azurerm_resource_group.main.name
-  parent_id           = azurerm_user_assigned_identity.crossplane.id
-  audience            = ["api://AzureADTokenExchange"]
-  issuer              = azurerm_kubernetes_cluster.main.oidc_issuer_url
-  subject             = "system:serviceaccount:${var.crossplane_namespace}:${var.crossplane_service_account}"
+  name      = "crossplane-provider-azure"
+  parent_id = azurerm_user_assigned_identity.crossplane.id
+  audience  = ["api://AzureADTokenExchange"]
+  issuer    = azurerm_kubernetes_cluster.main.oidc_issuer_url
+  subject   = "system:serviceaccount:${var.crossplane_namespace}:${var.crossplane_service_account}"
 }
 
 # Crossplane needs Contributor on the subscription to provision resource groups,
@@ -51,12 +50,11 @@ resource "azurerm_user_assigned_identity" "eso" {
 # Federated credential: allows the ESO controller ServiceAccount to exchange
 # its cluster-issued OIDC token for an Azure access token.
 resource "azurerm_federated_identity_credential" "eso" {
-  name                = "eso-controller"
-  resource_group_name = azurerm_resource_group.main.name
-  parent_id           = azurerm_user_assigned_identity.eso.id
-  audience            = ["api://AzureADTokenExchange"]
-  issuer              = azurerm_kubernetes_cluster.main.oidc_issuer_url
-  subject             = "system:serviceaccount:${var.eso_namespace}:${var.eso_service_account}"
+  name      = "eso-controller"
+  parent_id = azurerm_user_assigned_identity.eso.id
+  audience  = ["api://AzureADTokenExchange"]
+  issuer    = azurerm_kubernetes_cluster.main.oidc_issuer_url
+  subject   = "system:serviceaccount:${var.eso_namespace}:${var.eso_service_account}"
 }
 
 # ESO Key Vault access is wired in keyvault.tf (azurerm_role_assignment.kv_secrets_user_eso)
