@@ -24,7 +24,6 @@ resource "azurerm_federated_identity_credential" "crossplane" {
 
 # Crossplane needs Contributor on the subscription to provision resource groups,
 # storage accounts, key vaults, etc. on behalf of developers.
-# TODO: Scope to a dedicated management resource group in production.
 resource "azurerm_role_assignment" "crossplane_contributor" {
   principal_id                     = azurerm_user_assigned_identity.crossplane.principal_id
   role_definition_name             = "Contributor"
