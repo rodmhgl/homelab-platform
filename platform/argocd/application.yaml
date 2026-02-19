@@ -19,14 +19,20 @@ spec:
     namespace: argocd
     server: https://kubernetes.default.svc
   project: platform
-  source:
-    chart: argo-cd
-    helm:
-      releaseName: argocd
-      valueFiles:
-        - $values/platform/argocd/values.yaml
-    repoURL: https://argoproj.github.io/argo-helm
-    targetRevision: "7.*"
+  sources:
+    ## Helm chart source
+    - chart: argo-cd
+      helm:
+        releaseName: argocd
+        valueFiles:
+          - $values/platform/argocd/values.yaml
+      repoURL: https://argoproj.github.io/argo-helm
+      targetRevision: "7.9.1"
+    ## Values source — $values resolves to the root of this repo
+    - path: "."
+      ref: values
+      repoURL: https://github.com/rodmhgl/homelab-platform
+      targetRevision: main
   syncPolicy:
     automated:
       prune: true
