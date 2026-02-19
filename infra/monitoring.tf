@@ -75,9 +75,10 @@ resource "azurerm_role_assignment" "grafana_admin" {
 resource "azurerm_role_assignment" "grafana_monitor_reader" {
   count = var.enable_monitoring ? 1 : 0
 
-  principal_id         = azurerm_dashboard_grafana.main[0].identity[0].principal_id
-  role_definition_name = "Monitoring Data Reader"
-  scope                = azurerm_monitor_workspace.main[0].id
+  principal_id                      = azurerm_dashboard_grafana.main[0].identity[0].principal_id
+  role_definition_name              = "Monitoring Data Reader"
+  scope                             = azurerm_monitor_workspace.main[0].id
+  skip_service_principal_aad_check  = true
 }
 
 # ---------------------------------------------------------------------------
