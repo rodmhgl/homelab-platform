@@ -1,0 +1,50 @@
+## Crossplane Providers — Argo CD Application
+##
+## Installs the DeploymentRuntimeConfig, Providers, and Functions AFTER Crossplane
+## core is Healthy (wave 2 > wave 1). These objects are registered by Crossplane core
+## (pkg.crossplane.io CRDs), so they can only be applied once wave 1 is complete.
+##
+## IMPORTANT: Being Healthy here means the Provider *objects* exist and Crossplane
+## has scheduled them. The Provider pods still need to pull their packages and register
+## their own CRDs (azure.upbound.io/*, keyvault.azure.upbound.io/*, etc.) before
+## crossplane-config (wave 3) can apply ProviderConfig/XRDs/Compositions.
+##
+## SkipDryRunOnMissingResource=true is set on crossplane-config (wave 3) to tolerate
+## any residual timing gaps. selfHeal on crossplane-config means Argo CD will retry
+## until the provider CRDs are registered and all resources sync cleanly.
+##
+## Sync ordering within this Application:
+##   Wave 0: providers/runtime-config.yaml   (DeploymentRuntimeConfig — no CRD deps)
+##   Wave 1: providers/provider-*.yaml       (Providers — need pkg.crossplane.io CRDs)
+##           functions/function-*.yaml       (Functions — need pkg.crossplane.io CRDs)
+##
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/name: crossplane-providers
+    app.kubernetes.io/part-of: platform
+  name: crossplane-providers
+  namespace: argocd
+spec:
+  destination:
+    namespace: crossplane-system
+    server: https://kubernetes.default.svc
+  project: platform
+  source:
+    repoURL: https://github.com/rodmhgl/homelab-platform
+    targetRevision: main
+    path: platform/crossplane-providers
+    directory:
+      recurse: true
+      exclude: "application.yaml"
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
