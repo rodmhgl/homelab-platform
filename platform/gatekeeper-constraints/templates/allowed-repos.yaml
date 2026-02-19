@@ -1,0 +1,67 @@
+## ConstraintTemplate: AllowedRepos
+##
+## Restricts container images to a set of trusted registries. On this platform,
+## all application images must be pulled from the homelab ACR — this enforces the
+## supply chain rule that only images that have passed the CI pipeline (Trivy scan,
+## signing) are deployed. Public images (Docker Hub, GHCR) are blocked for workloads.
+##
+## Parameters:
+##   repos ([]string): allowed registry prefixes (e.g., "myacr.azurecr.io/")
+##
+## Example violation:
+##   Container "app" uses image "nginx:1.25" from an untrusted registry
+##
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  name: allowedrepos
+spec:
+  crd:
+    spec:
+      names:
+        kind: AllowedRepos
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            repos:
+              description: List of registry prefixes that images must start with.
+              type: array
+              items:
+                type: string
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package allowedrepos
+
+        violation[{"msg": msg}] {
+          container := input_containers[_]
+          not image_is_allowed(container.image)
+          msg := sprintf(
+            "Container '%v' uses image '%v' from an untrusted registry. Allowed: %v",
+            [container.name, container.image, input.parameters.repos]
+          )
+        }
+
+        image_is_allowed(image) {
+          repo := input.parameters.repos[_]
+          startswith(image, repo)
+        }
+
+        input_containers contains container {
+          container := input.review.object.spec.containers[_]
+        }
+
+        input_containers contains container {
+          container := input.review.object.spec.template.spec.containers[_]
+        }
+
+        input_containers contains container {
+          container := input.review.object.spec.initContainers[_]
+        }
+
+        input_containers contains container {
+          container := input.review.object.spec.template.spec.initContainers[_]
+        }

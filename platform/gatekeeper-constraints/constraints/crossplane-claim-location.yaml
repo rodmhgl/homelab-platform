@@ -1,0 +1,26 @@
+## Constraint: crossplane-claim-location
+##
+## Restricts Crossplane StorageBucket and Vault Claims to approved Azure regions.
+## Applies to all namespaces since Claims can be submitted from any namespace.
+##
+## Allowed locations: southcentralus (primary homelab region) and eastus2 (DR/testing).
+## Extend allowedLocations here if additional regions are approved.
+##
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: CrossplaneClaimLocation
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  name: restrict-claim-locations
+spec:
+  enforcementAction: deny
+  match:
+    kinds:
+      - apiGroups: ["platform.example.com"]
+        kinds:
+          - StorageBucket
+          - Vault
+  parameters:
+    allowedLocations:
+      - southcentralus
+      - eastus2

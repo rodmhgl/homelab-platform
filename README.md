@@ -8,7 +8,9 @@ AKS Home Lab Internal Developer Platform (IDP) mono-repo.
 |---|---|---|
 | `infra/` | ✅ Complete | Terraform — AKS, VNet, ACR, bootstrap KV, managed identities. TFC: `rnlabs/aks-platform` |
 | `platform/argocd/` | ✅ Complete | Argo CD — Helm values, self-manage Application, root App of Apps, Workload ApplicationSet, Projects, `bootstrap.sh` |
-| `platform/crossplane/` | ⬜ Pending | Providers, XRDs (StorageBucket, Vault), Compositions |
+| `platform/crossplane/` | ✅ Complete | Crossplane core Helm install (wave 1) |
+| `platform/crossplane-providers/` | ✅ Complete | DeploymentRuntimeConfig, Providers (family/storage/keyvault), function-patch-and-transform (wave 2) |
+| `platform/crossplane-config/` | ✅ Complete | ProviderConfig (OIDCTokenFile), XRDs (StorageBucket/Vault), Compositions — Pipeline mode (wave 3) |
 | `platform/gatekeeper/` | ⬜ Pending | OPA ConstraintTemplates + Constraints |
 | `platform/external-secrets/` | ⬜ Pending | ESO + ClusterSecretStore |
 | `platform/trivy-operator/` | ⬜ Pending | CVE scanning |

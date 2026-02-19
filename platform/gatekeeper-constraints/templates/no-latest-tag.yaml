@@ -1,0 +1,77 @@
+## ConstraintTemplate: NoLatestTag
+##
+## Blocks container images that use the "latest" tag or have no tag at all.
+## Image tags must be explicit semver or digest references to ensure reproducible
+## deployments — a core requirement for the GitOps model where the same YAML should
+## produce the same behaviour on every sync.
+##
+## Parameters:
+##   exemptImages ([]string): image substrings that are exempt (e.g., debug sidecars)
+##
+## Example violation:
+##   Container "app" uses image "myrepo/myapp:latest" — explicit tag required
+##
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  name: nolatesttag
+spec:
+  crd:
+    spec:
+      names:
+        kind: NoLatestTag
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            exemptImages:
+              description: Image substrings that are exempt from this rule.
+              type: array
+              items:
+                type: string
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package nolatesttag
+
+        violation[{"msg": msg}] {
+          container := input_containers[_]
+          not is_exempt(container.image)
+          has_latest_or_no_tag(container.image)
+          msg := sprintf(
+            "Container '%v' uses image '%v': must not use 'latest' tag or omit tag",
+            [container.name, container.image]
+          )
+        }
+
+        has_latest_or_no_tag(image) {
+          endswith(image, ":latest")
+        }
+
+        has_latest_or_no_tag(image) {
+          # Image has no colon at all (no tag, no digest)
+          not contains(image, ":")
+        }
+
+        is_exempt(image) {
+          exempt := input.parameters.exemptImages[_]
+          contains(image, exempt)
+        }
+
+        input_containers contains container {
+          container := input.review.object.spec.containers[_]
+        }
+
+        input_containers contains container {
+          container := input.review.object.spec.template.spec.containers[_]
+        }
+
+        input_containers contains container {
+          container := input.review.object.spec.initContainers[_]
+        }
+
+        input_containers contains container {
+          container := input.review.object.spec.template.spec.initContainers[_]
+        }

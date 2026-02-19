@@ -1,0 +1,30 @@
+## Constraint: no-latest-tag
+##
+## Prevents any workload from using the "latest" image tag or an untagged image.
+## Enforced platform-wide across all non-system namespaces.
+##
+## exemptImages is intentionally empty — no workload image should use :latest.
+## Debug/tooling images that need :latest should be deployed manually, not via GitOps.
+##
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: NoLatestTag
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  name: no-latest-tag
+spec:
+  enforcementAction: deny
+  match:
+    kinds:
+      - apiGroups: ["", "apps", "batch"]
+        kinds:
+          - Pod
+          - Deployment
+          - StatefulSet
+          - DaemonSet
+          - Job
+          - CronJob
+    namespaces:
+      - workloads
+  parameters:
+    exemptImages: []

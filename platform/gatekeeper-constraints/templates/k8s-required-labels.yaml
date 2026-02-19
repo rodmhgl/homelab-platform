@@ -1,0 +1,47 @@
+## ConstraintTemplate: K8sRequiredLabels
+##
+## Ensures that specified Kubernetes resources carry a required set of metadata labels.
+## Used by the require-standard-labels Constraint to enforce ownership labels on all
+## workload Deployments — satisfying auditability and the platform's golden path.
+##
+## Parameters:
+##   labels ([]string): label keys that must be present on the resource
+##
+## Example violation:
+##   Deployment "my-app" is missing required labels: [app.kubernetes.io/name]
+##
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  name: k8srequiredlabels
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sRequiredLabels
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            labels:
+              description: List of label keys that must be present.
+              type: array
+              items:
+                type: string
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8srequiredlabels
+
+        violation[{"msg": msg}] {
+          provided := {l | input.review.object.metadata.labels[l]}
+          required := {l | l := input.parameters.labels[_]}
+          missing := required - provided
+          count(missing) > 0
+          msg := sprintf(
+            "%v/%v is missing required labels: %v",
+            [input.review.kind.kind, input.review.object.metadata.name, missing]
+          )
+        }

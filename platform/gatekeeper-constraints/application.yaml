@@ -1,0 +1,50 @@
+## Gatekeeper Constraints — Argo CD Application
+##
+## Applies all ConstraintTemplate and Constraint manifests AFTER the Gatekeeper
+## controller is Healthy (wave 5 > wave 4).
+##
+## Why a separate Application from the Gatekeeper Helm install:
+##   - ConstraintTemplate objects are processed by the Gatekeeper controller, which
+##     registers a new CRD for each template (e.g., K8sRequiredLabels, CrossplaneClaimLocation).
+##   - Constraint objects reference those CRDs. If templates and constraints are applied
+##     simultaneously, the Constraint CRDs may not exist yet, causing sync failures.
+##   - Two-wave approach: wave 4 installs Gatekeeper + registers the controller,
+##     wave 5 applies all policy objects once the controller can process them.
+##
+## Sync ordering within this Application (sync-wave annotations on individual files):
+##   Wave 0: templates/  — ConstraintTemplates (register CRDs via the controller)
+##   Wave 1: constraints/ — Constraint instances (reference the template-registered CRDs)
+##
+## SkipDryRunOnMissingResource=true handles the timing gap between ConstraintTemplate
+## admission and CRD registration — same pattern as crossplane-config.
+##
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/name: gatekeeper-constraints
+    app.kubernetes.io/part-of: platform
+  name: gatekeeper-constraints
+  namespace: argocd
+spec:
+  destination:
+    namespace: gatekeeper-system
+    server: https://kubernetes.default.svc
+  project: platform
+  source:
+    repoURL: https://github.com/rodmhgl/homelab-platform
+    targetRevision: main
+    path: platform/gatekeeper-constraints
+    directory:
+      recurse: true
+      exclude: "application.yaml"
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
