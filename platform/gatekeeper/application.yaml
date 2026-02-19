@@ -32,6 +32,12 @@ metadata:
   name: gatekeeper
   namespace: argocd
 spec:
+  ignoreDifferences:
+    - group: ""
+      kind: ValidatingWebhookConfiguration
+      name: <resource-name>
+      jqPathExpressions:
+        - .webhooks[].namespaceSelector    
   destination:
     namespace: gatekeeper-system
     server: https://kubernetes.default.svc
