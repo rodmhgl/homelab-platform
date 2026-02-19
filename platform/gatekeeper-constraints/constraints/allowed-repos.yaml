@@ -7,7 +7,6 @@
 ## This enforces the full CI supply chain: images must be built by CI, pushed to ACR,
 ## and tagged with a semver ref before they can be deployed.
 ##
-## TODO: Replace <ACR_LOGIN_SERVER> with the actual output from Terraform:
 ##   terraform output -raw acr_login_server
 ##   e.g., homelab<random>.azurecr.io
 ##
@@ -34,4 +33,4 @@ spec:
   parameters:
     repos:
       ## Replace with actual ACR login server from: terraform output -raw acr_login_server
-      - "<ACR_LOGIN_SERVER>/"
+      - "homelabplatformacr.azurecr.io/"
