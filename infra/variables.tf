@@ -137,6 +137,15 @@ variable "eso_service_account" {
 }
 
 # ---------------------------------------------------------------------------
+# Monitoring (Azure Monitor Workspace + Managed Grafana)
+# ---------------------------------------------------------------------------
+variable "enable_monitoring" {
+  description = "Deploy Azure Monitor managed Prometheus workspace and Managed Grafana. Set to false to skip these resources and reduce cost."
+  type        = bool
+  default     = false
+}
+
+# ---------------------------------------------------------------------------
 # Tagging
 # ---------------------------------------------------------------------------
 variable "tags" {

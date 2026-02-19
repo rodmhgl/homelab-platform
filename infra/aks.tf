@@ -81,6 +81,17 @@ resource "azurerm_kubernetes_cluster" "main" {
   # The kubelet_identity block is populated by AKS; we wire the role assignment
   # to it in acr.tf after the cluster is created.
 
+  # Managed Prometheus addon — only enabled when var.enable_monitoring = true.
+  # The monitor_metrics block activates the AKS-side scraper; the DCR in
+  # monitoring.tf routes the collected metrics to the Azure Monitor Workspace.
+  dynamic "monitor_metrics" {
+    for_each = var.enable_monitoring ? [1] : []
+    content {
+      annotations_allowed = null
+      labels_allowed      = null
+    }
+  }
+
   tags = local.tags
 
   depends_on = [

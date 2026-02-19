@@ -106,3 +106,21 @@ output "tenant_id" {
   sensitive   = true
   value       = data.azurerm_client_config.current.tenant_id
 }
+
+# ---------------------------------------------------------------------------
+# Monitoring (null when enable_monitoring = false)
+# ---------------------------------------------------------------------------
+output "grafana_endpoint" {
+  description = "Public endpoint for Azure Managed Grafana (null if monitoring is disabled)"
+  value       = var.enable_monitoring ? azurerm_dashboard_grafana.main[0].endpoint : null
+}
+
+output "monitor_workspace_id" {
+  description = "Resource ID of the Azure Monitor Workspace (null if monitoring is disabled)"
+  value       = var.enable_monitoring ? azurerm_monitor_workspace.main[0].id : null
+}
+
+output "monitor_workspace_prometheus_query_endpoint" {
+  description = "Prometheus query endpoint for the Azure Monitor Workspace (null if monitoring is disabled)"
+  value       = var.enable_monitoring ? azurerm_monitor_workspace.main[0].query_endpoint : null
+}
