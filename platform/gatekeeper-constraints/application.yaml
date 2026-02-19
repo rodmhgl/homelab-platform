@@ -41,8 +41,6 @@ spec:
     repoURL: https://github.com/rodmhgl/homelab-platform
     targetRevision: main
     path: platform/gatekeeper-constraints/constraints
-    directory:
-      recurse: false
   syncPolicy:
     automated:
       prune: true
