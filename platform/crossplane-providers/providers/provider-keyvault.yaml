@@ -18,5 +18,4 @@ spec:
   package: xpkg.upbound.io/upbound/provider-azure-keyvault:v1.9.0
   runtimeConfigRef:
     name: provider-azure-config
-  installConditionFailurePolicy: Stop
   packagePullPolicy: IfNotPresent
