@@ -11,7 +11,10 @@ AKS Home Lab Internal Developer Platform (IDP) mono-repo.
 | `platform/crossplane/` | ✅ Complete | Crossplane core Helm install (wave 1) |
 | `platform/crossplane-providers/` | ✅ Complete | DeploymentRuntimeConfig, Providers (family/storage/keyvault), function-patch-and-transform (wave 2) |
 | `platform/crossplane-config/` | ✅ Complete | ProviderConfig (OIDCTokenFile), XRDs (StorageBucket/Vault), Compositions — Pipeline mode (wave 3) |
-| `platform/gatekeeper/` | ⬜ Pending | OPA ConstraintTemplates + Constraints |
+| `platform/gatekeeper/` | ✅ Complete | Gatekeeper Helm install (wave 4) |
+| `platform/gatekeeper-templates/` | ✅ Complete | 8 ConstraintTemplates (wave 5) |
+| `platform/gatekeeper-constraints/` | ✅ Complete | 8 Constraints with enforcementAction: deny (wave 6) |
+| `platform/platform-api/` | ✅ Complete | Platform API Kubernetes manifests (Deployment, Service, RBAC, application.yaml) |
 | `platform/external-secrets/` | ⬜ Pending | ESO + ClusterSecretStore |
 | `platform/trivy-operator/` | ⬜ Pending | CVE scanning |
 | `platform/falco/` | ⬜ Pending | Runtime security + Falcosidekick |
@@ -19,8 +22,8 @@ AKS Home Lab Internal Developer Platform (IDP) mono-repo.
 | `platform/kagent/` | ⬜ Pending | Natural language cluster interaction |
 | `platform/holmesgpt/` | ⬜ Pending | AI-powered root cause analysis |
 | `scaffolds/` | ⬜ Pending | Copier templates (go-service, python-service) |
-| `api/` | ⬜ Pending | Platform API — Go + Chi |
-| `cli/` | ⬜ Pending | `rdp` CLI — Go + Cobra + bubbletea |
+| `api/` | ✅ Complete | Platform API — Go + Chi router, structured logging, graceful shutdown |
+| `cli/` | 🔨 In Progress | `rdp` CLI — Cobra root command + Viper config management complete |
 
 ## Bootstrap
 
