@@ -1,0 +1,179 @@
+## Composition: keyvault-azure — Wave 4
+##
+## Pipeline-mode Composition that provisions:
+##   1. ResourceGroup — dedicated RG per claim (rg-{namespace}-{claimname})
+##   2. Vault (azure keyvault) — named kv-{namespace}-{claimname} (truncated for Azure limits)
+##
+## Azure Key Vault naming: 3-24 chars, alphanumeric + hyphens, start with letter,
+## end with letter or digit. We use kv-{ns}-{name} truncated to 24 chars.
+##
+## Connection details:
+##   vaultUri, vaultName, resourceGroupName
+##   Available via writeConnectionSecretToRef in the Claim.
+##
+## Soft delete is always enabled (Azure default since 2020). purgeProtection is
+## left OFF for homelab (allows clean teardown without 90-day wait).
+##
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/part-of: platform
+    provider: azure
+    service: keyvault
+  name: keyvault-azure
+spec:
+  compositeTypeRef:
+    apiVersion: platform.example.com/v1alpha1
+    kind: XKeyVault
+  mode: Pipeline
+  pipeline:
+    - step: patch-and-transform
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          ## --- ResourceGroup ---
+          - name: resource-group
+            base:
+              apiVersion: azure.upbound.io/v1beta1
+              kind: ResourceGroup
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  tags:
+                    managed-by: crossplane
+                    platform: homelab
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.location
+                toFieldPath: spec.forProvider.location
+              ## RG name: rg-{namespace}-{claimname}
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.claimRef.namespace
+                    - fromFieldPath: spec.claimRef.name
+                  strategy: string
+                  string:
+                    fmt: "rg-%s-%s"
+                toFieldPath: metadata.name
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.claimRef.name
+                toFieldPath: spec.forProvider.tags["claim-name"]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.claimRef.namespace
+                toFieldPath: spec.forProvider.tags["claim-namespace"]
+
+          ## --- Key Vault ---
+          - name: key-vault
+            base:
+              apiVersion: keyvault.azure.upbound.io/v1beta2
+              kind: Vault
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  ## Public network access off by default; Gatekeeper enforces this
+                  publicNetworkAccessEnabled: false
+                  ## Soft delete always on (required by Azure since 2020)
+                  softDeleteEnabled: true
+                  ## Purge protection OFF for homelab — allows clean teardown
+                  purgeProtectionEnabled: false
+                  ## RBAC auth mode — matches bootstrap Key Vault pattern
+                  skuName: standard
+                  tags:
+                    managed-by: crossplane
+                    platform: homelab
+                ## Connection details written to crossplane-system, propagated to claim namespace
+                writeConnectionSecretToRef:
+                  namespace: crossplane-system
+            connectionDetails:
+              - name: vaultUri
+                fromFieldPath: status.atProvider.vaultUri
+                type: FromFieldPath
+              - name: vaultName
+                fromFieldPath: metadata.name
+                type: FromFieldPath
+              - name: resourceGroupName
+                fromFieldPath: spec.forProvider.resourceGroupName
+                type: FromFieldPath
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.location
+                toFieldPath: spec.forProvider.location
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.skuName
+                toFieldPath: spec.forProvider.skuName
+              ## Public access toggle (Gatekeeper blocks true)
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.publicAccess
+                toFieldPath: spec.forProvider.publicNetworkAccessEnabled
+              ## Soft delete retention days
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.softDeleteRetentionDays
+                toFieldPath: spec.forProvider.softDeleteRetentionDays
+              ## RG reference
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.claimRef.namespace
+                    - fromFieldPath: spec.claimRef.name
+                  strategy: string
+                  string:
+                    fmt: "rg-%s-%s"
+                toFieldPath: spec.forProvider.resourceGroupName
+              ## Vault name: kv-{namespace}-{claimname} — Azure limit 24 chars
+              ## We let Crossplane set metadata.name; the provider uses it as the vault name
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.claimRef.namespace
+                    - fromFieldPath: spec.claimRef.name
+                  strategy: string
+                  string:
+                    fmt: "kv-%s-%s"
+                toFieldPath: metadata.name
+                transforms:
+                  ## Strip underscores and dots (hyphens allowed in KV names)
+                  - type: string
+                    string:
+                      type: Regexp
+                      regexp:
+                        match: '[._]'
+                        replace: '-'
+                  ## Truncate to 24 chars (Azure Key Vault name limit)
+                  - type: string
+                    string:
+                      type: TrimSuffix
+                      trim: ""
+              ## Unique connection secret name
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.claimRef.name
+                  strategy: string
+                  string:
+                    fmt: "%s-vault"
+                toFieldPath: spec.writeConnectionSecretToRef.name
+              ## Patch vault name back to composite status
+              - type: ToCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: status.vaultName
+              ## Patch vault URI back to composite status
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.vaultUri
+                toFieldPath: status.vaultUri
+              ## Tag with claim metadata
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.claimRef.name
+                toFieldPath: spec.forProvider.tags["claim-name"]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.claimRef.namespace
+                toFieldPath: spec.forProvider.tags["claim-namespace"]

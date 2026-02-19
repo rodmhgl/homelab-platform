@@ -1,0 +1,25 @@
+## provider-azure-storage — Wave 1
+##
+## Provides the Azure Storage resource types used in the StorageBucket Composition:
+##   - azure.storage.upbound.io/v1beta1 Account (StorageV2)
+##   - azure.storage.upbound.io/v1beta1 Container
+##   - azure.storage.upbound.io/v1beta1 ... (ResourceGroup is from provider-family)
+##
+## Must wait for provider-family-azure to be healthy before its CRDs are usable,
+## but they both install in wave 1 — Argo CD will retry until healthy.
+##
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/part-of: platform
+  name: upbound-provider-azure-storage
+spec:
+  package: xpkg.upbound.io/upbound/provider-azure-storage:v1.9.0
+  runtimeConfigRef:
+    name: provider-azure-config
+  installConditionFailurePolicy: Stop
+  packagePullPolicy: IfNotPresent

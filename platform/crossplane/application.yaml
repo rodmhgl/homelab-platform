@@ -1,0 +1,65 @@
+## Crossplane Argo CD Application
+##
+## Two-source pattern: Helm chart + values from this repo (same as argocd).
+##
+## The crossplane/ directory is structured so that Argo CD applies manifests in
+## sync-wave order:
+##   Wave 0: providers/runtime-config.yaml
+##   Wave 1: providers/provider-*.yaml, functions/function-*.yaml
+##   Wave 2: config/provider-config.yaml
+##   Wave 3: xrds/x*.yaml
+##   Wave 4: compositions/*.yaml
+##
+## ServerSideApply is required for Crossplane CRDs — they use strategic merge
+## patch annotations that only SSA understands.
+##
+## Note: Crossplane must be installed (this Application) before the sync-wave
+## sub-resources can be applied, since the Provider/ProviderConfig CRDs are
+## installed by Crossplane itself.
+##
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  annotations:
+    ## Crossplane installs before its providers (wave ordering is within this app's resources)
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/name: crossplane
+    app.kubernetes.io/part-of: platform
+  name: crossplane
+  namespace: argocd
+spec:
+  destination:
+    namespace: crossplane-system
+    server: https://kubernetes.default.svc
+  project: platform
+  sources:
+    ## Helm chart — Crossplane core install
+    - chart: crossplane
+      helm:
+        releaseName: crossplane
+        valueFiles:
+          - $values/platform/crossplane/values.yaml
+      repoURL: https://charts.crossplane.io/stable
+      targetRevision: "1.18.2"
+    ## Values + all provider/XRD/Composition manifests from this repo
+    - path: platform/crossplane
+      ref: values
+      repoURL: https://github.com/rodmhgl/homelab-platform
+      targetRevision: main
+      directory:
+        ## Include only the YAML manifests in subdirs — not values.yaml or application.yaml
+        ## Argo CD recurses into providers/, config/, functions/, xrds/, compositions/
+        recurse: true
+        exclude: "application.yaml"
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      ## Required for Crossplane CRDs (strategic merge patch annotations)
+      - ServerSideApply=true
+      ## Respect the sync-wave annotations on all sub-resources
+      - RespectIgnoreDifferences=true

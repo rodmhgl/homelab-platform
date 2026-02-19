@@ -1,0 +1,23 @@
+## function-patch-and-transform — Wave 1
+##
+## The pipeline function that powers Pipeline-mode Compositions. In Pipeline mode,
+## the Composition's spec.pipeline[].step entries reference this Function by name.
+## Each step is an invocation of the function with a FunctionIO input.
+##
+## This replaces the legacy inline spec.resources approach, enabling:
+##   - Ordered patch steps with explicit sequencing
+##   - Conditional patches via toFieldPath filters
+##   - CombineFromComposite for multi-field string building (e.g. storage account names)
+##
+apiVersion: pkg.crossplane.io/v1beta1
+kind: Function
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/part-of: platform
+  name: function-patch-and-transform
+spec:
+  package: xpkg.upbound.io/crossplane-contrib/function-patch-and-transform:v0.8.1
+  packagePullPolicy: IfNotPresent

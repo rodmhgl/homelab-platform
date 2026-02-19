@@ -1,0 +1,46 @@
+## DeploymentRuntimeConfig — Wave 0
+##
+## Labels and annotates the provider pods + ServiceAccount for Azure Workload Identity
+## federation. The client-id annotation is what tells Azure AD which Managed Identity
+## to impersonate when the provider pod authenticates.
+##
+## client-id: replace with TF output crossplane_identity_client_id
+##   (az identity show --resource-group rg-homelab-aks-dev --name id-homelab-aks-dev-crossplane --query clientId -o tsv)
+##
+## If Upbound providers generate a SA name with a hash suffix (e.g. provider-azure-abc123),
+## update the name field AND the crossplane_service_account variable in infra/variables.tf
+## and re-apply Terraform to recreate the federated credential.
+##
+apiVersion: pkg.crossplane.io/v1beta1
+kind: DeploymentRuntimeConfig
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/part-of: platform
+  name: provider-azure-config
+spec:
+  deploymentTemplate:
+    spec:
+      selector: {}
+      template:
+        metadata:
+          labels:
+            ## Required for AKS Workload Identity mutating webhook to inject
+            ## the federated token into the provider pods.
+            azure.workload.identity/use: "true"
+        spec:
+          containers: []
+          securityContext:
+            fsGroup: 2000
+  serviceAccountTemplate:
+    metadata:
+      annotations:
+        ## client-id ties this SA to the Managed Identity via OIDC federation.
+        ## Value must match the federated credential subject in Terraform:
+        ##   system:serviceaccount:crossplane-system:provider-azure
+        azure.workload.identity/client-id: "REPLACE_WITH_CROSSPLANE_IDENTITY_CLIENT_ID"
+      labels:
+        azure.workload.identity/use: "true"
+      name: provider-azure

@@ -1,0 +1,244 @@
+## Composition: storagebucket-azure — Wave 4
+##
+## Pipeline-mode Composition that provisions:
+##   1. ResourceGroup — dedicated RG per claim (rg-{namespace}-{claimname})
+##   2. Account (StorageV2) — storage account named st{claimname} (sanitized)
+##   3. Container (blob) — private blob container named {claimname}-data
+##
+## Naming constraints: Azure storage accounts must be 3-24 chars, lowercase alphanumeric.
+## We prefix with "st" and sanitize the claim name (strip hyphens/dots/underscores).
+##
+## Connection details flow:
+##   Account → Composite status (storageAccountName, primaryBlobEndpoint)
+##   Account → Claim's writeConnectionSecretToRef (primaryAccessKey, primaryConnectionString,
+##              secondaryAccessKey, secondaryConnectionString)
+##
+## Auth: ProviderConfig "default" → InjectedIdentity → Workload Identity → Managed Identity
+##
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/part-of: platform
+    provider: azure
+    service: storage
+  name: storagebucket-azure
+spec:
+  compositeTypeRef:
+    apiVersion: platform.example.com/v1alpha1
+    kind: XStorageBucket
+  ## Pipeline mode — modern Crossplane approach using Function steps.
+  ## Each step is an invocation of function-patch-and-transform with a FunctionIO.
+  mode: Pipeline
+  pipeline:
+    - step: patch-and-transform
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          ## --- ResourceGroup ---
+          - name: resource-group
+            base:
+              apiVersion: azure.upbound.io/v1beta1
+              kind: ResourceGroup
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  tags:
+                    managed-by: crossplane
+                    platform: homelab
+            patches:
+              ## Location from claim parameters
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.location
+                toFieldPath: spec.forProvider.location
+              ## RG name: rg-{namespace}-{claimname}
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.claimRef.namespace
+                    - fromFieldPath: spec.claimRef.name
+                  strategy: string
+                  string:
+                    fmt: "rg-%s-%s"
+                toFieldPath: metadata.name
+              ## Tag with claim metadata for traceability
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.claimRef.name
+                toFieldPath: spec.forProvider.tags["claim-name"]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.claimRef.namespace
+                toFieldPath: spec.forProvider.tags["claim-namespace"]
+
+          ## --- Storage Account (StorageV2) ---
+          - name: storage-account
+            base:
+              apiVersion: storage.azure.upbound.io/v1beta2
+              kind: Account
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  accountKind: StorageV2
+                  ## TLS 1.2 enforced — non-negotiable platform standard
+                  minTlsVersion: TLS1_2
+                  ## Public access off by default — Gatekeeper also enforces this
+                  allowBlobPublicAccess: false
+                  ## HTTPS only — no unencrypted traffic
+                  enableHttpsTrafficOnly: true
+                  tags:
+                    managed-by: crossplane
+                    platform: homelab
+                ## Connection details written to the composite secret store,
+                ## then propagated to the claim namespace
+                writeConnectionSecretToRef:
+                  namespace: crossplane-system
+            connectionDetails:
+              - name: primaryAccessKey
+                fromConnectionSecretKey: attribute.primary_access_key
+              - name: primaryConnectionString
+                fromConnectionSecretKey: attribute.primary_connection_string
+              - name: secondaryAccessKey
+                fromConnectionSecretKey: attribute.secondary_access_key
+              - name: secondaryConnectionString
+                fromConnectionSecretKey: attribute.secondary_connection_string
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.location
+                toFieldPath: spec.forProvider.location
+              ## Tier: Standard or Premium (maps to accountTier)
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.tier
+                toFieldPath: spec.forProvider.accountTier
+              ## Redundancy: LRS, ZRS, GRS, etc. (maps to accountReplicationType)
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.redundancy
+                toFieldPath: spec.forProvider.accountReplicationType
+              ## Versioning toggle
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.enableVersioning
+                toFieldPath: spec.forProvider.blobProperties[0].versioningEnabled
+              ## Public access toggle (Gatekeeper blocks true, but we honour the schema)
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.publicAccess
+                toFieldPath: spec.forProvider.allowBlobPublicAccess
+              ## RG reference
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.claimRef.namespace
+                    - fromFieldPath: spec.claimRef.name
+                  strategy: string
+                  string:
+                    fmt: "rg-%s-%s"
+                toFieldPath: spec.forProvider.resourceGroupName
+              ## Storage account name: "st" + claimname, lowercase, strip [-._]
+              ## Azure constraint: 3-24 chars, lowercase alphanumeric only.
+              ## We truncate at 22 chars to leave room for the "st" prefix.
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.claimRef.name
+                  strategy: string
+                  string:
+                    fmt: "st%s"
+                toFieldPath: metadata.name
+                transforms:
+                  - type: string
+                    string:
+                      type: Regexp
+                      regexp:
+                        match: '[-._]'
+                        replace: ''
+                  - type: string
+                    string:
+                      type: Convert
+                      convert: ToLower
+                  - type: string
+                    string:
+                      type: TrimPrefix
+                      trim: ""
+              ## Unique connection secret name per account
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.claimRef.name
+                  strategy: string
+                  string:
+                    fmt: "%s-storage"
+                toFieldPath: spec.writeConnectionSecretToRef.name
+              ## Patch storageAccountName back to composite status for observability
+              - type: ToCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: status.storageAccountName
+              ## Patch primary blob endpoint back to composite status
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.primaryBlobEndpoint
+                toFieldPath: status.primaryBlobEndpoint
+              ## Tag with claim metadata
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.claimRef.name
+                toFieldPath: spec.forProvider.tags["claim-name"]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.claimRef.namespace
+                toFieldPath: spec.forProvider.tags["claim-namespace"]
+
+          ## --- Blob Container ---
+          - name: blob-container
+            base:
+              apiVersion: storage.azure.upbound.io/v1beta1
+              kind: Container
+              spec:
+                providerConfigRef:
+                  name: default
+                forProvider:
+                  containerAccessType: private
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.location
+                toFieldPath: spec.forProvider.location
+              ## Container name: {claimname}-data
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.claimRef.name
+                  strategy: string
+                  string:
+                    fmt: "%s-data"
+                toFieldPath: metadata.name
+              ## Reference the storage account by its computed name
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.claimRef.name
+                  strategy: string
+                  string:
+                    fmt: "st%s"
+                toFieldPath: spec.forProvider.storageAccountName
+                transforms:
+                  - type: string
+                    string:
+                      type: Regexp
+                      regexp:
+                        match: '[-._]'
+                        replace: ''
+                  - type: string
+                    string:
+                      type: Convert
+                      convert: ToLower
+              ## RG reference
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.claimRef.namespace
+                    - fromFieldPath: spec.claimRef.name
+                  strategy: string
+                  string:
+                    fmt: "rg-%s-%s"
+                toFieldPath: spec.forProvider.resourceGroupName

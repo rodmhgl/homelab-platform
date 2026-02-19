@@ -1,0 +1,23 @@
+## upbound-provider-family-azure — Wave 1
+##
+## The family provider is the parent that installs shared Azure CRDs and the
+## authentication layer. Storage and KeyVault providers depend on this being healthy.
+##
+## runtimeConfigRef points to the DeploymentRuntimeConfig (wave 0) which sets
+## the Workload Identity labels/annotations on the provider ServiceAccount.
+##
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/part-of: platform
+  name: upbound-provider-family-azure
+spec:
+  package: xpkg.upbound.io/upbound/provider-family-azure:v1.9.0
+  runtimeConfigRef:
+    name: provider-azure-config
+  installConditionFailurePolicy: Stop
+  packagePullPolicy: IfNotPresent

@@ -1,0 +1,25 @@
+## ProviderConfig — Wave 2
+##
+## Configures how providers authenticate to Azure. InjectedIdentity means the
+## provider pods use the Workload Identity token projected by AKS — no secretRef,
+## no client secret, nothing to rotate.
+##
+## This MUST be applied after the Providers are healthy (wave 1 → wave 2 ordering).
+## If you apply this before the provider CRDs exist, the apply fails because the
+## azure.upbound.io/v1beta1 ProviderConfig CRD doesn't exist yet.
+##
+## "default" is the conventional name — Crossplane Compositions reference
+## ProviderConfigs by name via spec.providerConfigRef.name: default
+##
+apiVersion: azure.upbound.io/v1beta1
+kind: ProviderConfig
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/part-of: platform
+  name: default
+spec:
+  credentials:
+    source: InjectedIdentity

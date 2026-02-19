@@ -1,0 +1,38 @@
+## Crossplane Helm values for homelab IDP
+## Chart: crossplane-stable/crossplane
+## Version: 1.18.x
+##
+## Crossplane installs into crossplane-system. Providers and Functions
+## also install here (their pods run in crossplane-system unless overridden
+## by DeploymentRuntimeConfig).
+
+resourcesCrossplane:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+resourcesRBACManager:
+  limits:
+    cpu: 100m
+    memory: 256Mi
+  requests:
+    cpu: 50m
+    memory: 128Mi
+
+## Enable leader election for stability (single replica is fine for homelab)
+leaderElection: true
+
+## Package cache — packages are pulled from xpkg.upbound.io on first install
+## and cached here. PVC recommended for production; emptyDir fine for homelab.
+packageCache:
+  sizeLimit: 1Gi
+
+## Metrics for Prometheus scraping (kube-prometheus-stack picks these up)
+metrics:
+  enabled: true
+
+## Provider/Function revisions to keep (old revisions are GC'd)
+maxCleanupRevisionHistory: 2

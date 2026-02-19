@@ -1,0 +1,94 @@
+## XRD: XKeyVault — Wave 3
+##
+## Defines the platform API for Azure Key Vault provisioning. Developers create
+## Vault Claims; the Composition provisions a dedicated ResourceGroup and Key Vault.
+##
+## Group: platform.example.com  (matches Gatekeeper constraint apiGroups)
+## Claim kind: Vault  (what developers write)
+## Composite kind: XKeyVault  (what Crossplane manages internally)
+##
+## Connection details propagated to the claim namespace:
+##   vaultUri, vaultName, resourceGroupName
+##
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/part-of: platform
+  name: xkeyvaults.platform.example.com
+spec:
+  group: platform.example.com
+  names:
+    kind: XKeyVault
+    plural: xkeyvaults
+  claimNames:
+    kind: Vault
+    plural: vaults
+  connectionSecretKeys:
+    - vaultUri
+    - vaultName
+    - resourceGroupName
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      additionalPrinterColumns:
+        - name: Ready
+          type: string
+          jsonPath: .status.conditions[?(@.type=='Ready')].status
+        - name: Synced
+          type: string
+          jsonPath: .status.conditions[?(@.type=='Synced')].status
+        - name: VaultName
+          type: string
+          jsonPath: .status.vaultName
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - parameters
+              properties:
+                parameters:
+                  type: object
+                  required:
+                    - location
+                  properties:
+                    location:
+                      type: string
+                      description: "Azure region. Gatekeeper CrossplaneClaimLocation enforces allowed values."
+                      default: southcentralus
+                    skuName:
+                      type: string
+                      description: "Key Vault SKU. standard is sufficient for most workloads."
+                      enum:
+                        - standard
+                        - premium
+                      default: standard
+                    publicAccess:
+                      type: boolean
+                      description: "Allow public network access. Gatekeeper CrossplaneNoPublicAccess blocks true."
+                      default: false
+                    softDeleteRetentionDays:
+                      type: integer
+                      description: "Days to retain soft-deleted keys/secrets. 7-90."
+                      minimum: 7
+                      maximum: 90
+                      default: 7
+            status:
+              type: object
+              properties:
+                vaultName:
+                  type: string
+                  description: "Provisioned Key Vault name."
+                vaultUri:
+                  type: string
+                  description: "Key Vault URI (https://{name}.vault.azure.net/)."

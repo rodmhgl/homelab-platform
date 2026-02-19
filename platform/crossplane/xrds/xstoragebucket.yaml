@@ -1,0 +1,110 @@
+## XRD: XStorageBucket — Wave 3
+##
+## Defines the platform API for blob storage. Developers create StorageBucket Claims;
+## the XRD validates them against this schema and the Composition materialises them
+## into Azure resources.
+##
+## Group: platform.example.com  (matches Gatekeeper constraint apiGroups)
+## Claim kind: StorageBucket  (what developers write)
+## Composite kind: XStorageBucket  (what Crossplane manages internally)
+##
+## Connection details propagated to the claim namespace (writeConnectionSecretToRef):
+##   primaryAccessKey, primaryConnectionString,
+##   secondaryAccessKey, secondaryConnectionString
+##
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/part-of: platform
+  name: xstoragebuckets.platform.example.com
+spec:
+  group: platform.example.com
+  names:
+    kind: XStorageBucket
+    plural: xstoragebuckets
+  claimNames:
+    kind: StorageBucket
+    plural: storagebuckets
+  ## Connection details surface to the claim's writeConnectionSecretToRef secret
+  connectionSecretKeys:
+    - primaryAccessKey
+    - primaryConnectionString
+    - secondaryAccessKey
+    - secondaryConnectionString
+    - storageAccountName
+    - primaryBlobEndpoint
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      ## Status subresource fields patched back by the Composition
+      additionalPrinterColumns:
+        - name: Ready
+          type: string
+          jsonPath: .status.conditions[?(@.type=='Ready')].status
+        - name: Synced
+          type: string
+          jsonPath: .status.conditions[?(@.type=='Synced')].status
+        - name: StorageAccount
+          type: string
+          jsonPath: .status.storageAccountName
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - parameters
+              properties:
+                parameters:
+                  type: object
+                  required:
+                    - location
+                  properties:
+                    location:
+                      type: string
+                      description: "Azure region (e.g. southcentralus). Gatekeeper CrossplaneClaimLocation enforces allowed values."
+                      default: southcentralus
+                    tier:
+                      type: string
+                      description: "Storage account tier: Standard or Premium."
+                      enum:
+                        - Standard
+                        - Premium
+                      default: Standard
+                    redundancy:
+                      type: string
+                      description: "Replication strategy. LRS is cheapest; GRS/GZRS for prod."
+                      enum:
+                        - LRS
+                        - ZRS
+                        - GRS
+                        - GZRS
+                        - RAGRS
+                        - RAGZRS
+                      default: LRS
+                    enableVersioning:
+                      type: boolean
+                      description: "Enable blob versioning. Useful for audit trails."
+                      default: false
+                    publicAccess:
+                      type: boolean
+                      description: "Allow public blob access. Gatekeeper CrossplaneNoPublicAccess blocks true."
+                      default: false
+            status:
+              type: object
+              properties:
+                storageAccountName:
+                  type: string
+                  description: "Provisioned storage account name (st{claimname} sanitized)."
+                primaryBlobEndpoint:
+                  type: string
+                  description: "Primary blob service endpoint URL."

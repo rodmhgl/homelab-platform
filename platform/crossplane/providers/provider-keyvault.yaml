@@ -1,0 +1,22 @@
+## provider-azure-keyvault — Wave 1
+##
+## Provides the Azure Key Vault resource types used in the Vault Composition:
+##   - azure.keyvault.upbound.io/v1beta1 Vault
+##
+## ResourceGroup is from provider-family; this provider supplies the Vault itself.
+##
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/part-of: platform
+  name: upbound-provider-azure-keyvault
+spec:
+  package: xpkg.upbound.io/upbound/provider-azure-keyvault:v1.9.0
+  runtimeConfigRef:
+    name: provider-azure-config
+  installConditionFailurePolicy: Stop
+  packagePullPolicy: IfNotPresent
