@@ -13,7 +13,6 @@
 apiVersion: constraints.gatekeeper.sh/v1beta1
 kind: AllowedRepos
 metadata:
-  annotations:
   name: allowed-repos
 spec:
   enforcementAction: deny

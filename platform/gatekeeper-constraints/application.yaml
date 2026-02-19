@@ -40,7 +40,10 @@ spec:
   source:
     repoURL: https://github.com/rodmhgl/homelab-platform
     targetRevision: main
-    path: platform/gatekeeper-constraints/constraints
+    path: platform/gatekeeper-constraints
+    directory:
+      recurse: true
+      exclude: "application.yaml"
   syncPolicy:
     automated:
       prune: true

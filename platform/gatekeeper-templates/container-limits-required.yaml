@@ -12,7 +12,6 @@
 apiVersion: templates.gatekeeper.sh/v1
 kind: ConstraintTemplate
 metadata:
-  annotations:
   name: containerlimitsrequired
 spec:
   crd:

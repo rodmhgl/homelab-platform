@@ -7,7 +7,6 @@
 apiVersion: constraints.gatekeeper.sh/v1beta1
 kind: RequireProbes
 metadata:
-  annotations:
   name: require-probes
 spec:
   enforcementAction: deny

@@ -12,7 +12,6 @@
 apiVersion: constraints.gatekeeper.sh/v1beta1
 kind: CrossplaneNoPublicAccess
 metadata:
-  annotations:
   name: deny-public-infra
 spec:
   enforcementAction: deny

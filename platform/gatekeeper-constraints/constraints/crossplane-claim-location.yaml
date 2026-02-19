@@ -9,7 +9,6 @@
 apiVersion: constraints.gatekeeper.sh/v1beta1
 kind: CrossplaneClaimLocation
 metadata:
-  annotations:
   name: restrict-claim-locations
 spec:
   enforcementAction: deny

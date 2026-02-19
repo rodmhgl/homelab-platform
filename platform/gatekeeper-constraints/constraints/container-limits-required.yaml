@@ -7,7 +7,6 @@
 apiVersion: constraints.gatekeeper.sh/v1beta1
 kind: ContainerLimitsRequired
 metadata:
-  annotations:
   name: container-limits-required
 spec:
   enforcementAction: deny

@@ -9,7 +9,6 @@
 apiVersion: constraints.gatekeeper.sh/v1beta1
 kind: NoLatestTag
 metadata:
-  annotations:
   name: no-latest-tag
 spec:
   enforcementAction: deny

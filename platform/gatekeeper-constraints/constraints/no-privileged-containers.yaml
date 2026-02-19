@@ -7,7 +7,6 @@
 apiVersion: constraints.gatekeeper.sh/v1beta1
 kind: NoPrivilegedContainers
 metadata:
-  annotations:
   name: no-privileged-containers
 spec:
   enforcementAction: deny

@@ -14,7 +14,6 @@
 apiVersion: templates.gatekeeper.sh/v1
 kind: ConstraintTemplate
 metadata:
-  annotations:
   name: nolatesttag
 spec:
   crd:
