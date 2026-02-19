@@ -1,0 +1,67 @@
+## Argo CD Projects — RBAC scoping for platform and workload Applications.
+## Applied as part of the bootstrap sequence (before root-app.yaml).
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/part-of: platform
+  name: platform
+  namespace: argocd
+spec:
+  description: Platform infrastructure components (Crossplane, Gatekeeper, ESO, Falco, etc.)
+  ## Only deploy to in-cluster
+  destinations:
+    - namespace: "*"
+      server: https://kubernetes.default.svc
+  ## Trust only the platform mono-repo
+  sourceRepos:
+    - https://github.com/rodmhgl/homelab-platform
+    ## Helm chart repos used by platform components
+    - https://argoproj.github.io/argo-helm
+    - https://charts.crossplane.io/stable
+    - https://open-policy-agent.github.io/gatekeeper/charts
+    - https://charts.external-secrets.io
+    - https://aquasecurity.github.io/helm-charts
+    - https://falcosecurity.github.io/charts
+    - https://prometheus-community.github.io/helm-charts
+    - https://kagent-dev.github.io/kagent/helm
+  ## Allow managing all cluster-scoped resources platform needs
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  orphanedResources:
+    warn: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/part-of: platform
+  name: workloads
+  namespace: argocd
+spec:
+  description: Developer workloads onboarded via the scaffold golden path
+  destinations:
+    - namespace: workloads
+      server: https://kubernetes.default.svc
+    ## Allow per-app namespaces if scaffold uses them
+    - namespace: "*"
+      server: https://kubernetes.default.svc
+  ## Any GitHub repo is valid — workload repos are created by the scaffold
+  sourceRepos:
+    - "https://github.com/rodmhgl/*"
+  ## Workloads may not manage cluster-scoped resources
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  ## Workloads may not deploy Crossplane Claims outside their own namespace
+  ## (Gatekeeper enforces the location/publicAccess constraints at admission)
+  orphanedResources:
+    warn: true

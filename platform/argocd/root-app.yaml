@@ -1,0 +1,37 @@
+## Root App of Apps (platform-root).
+##
+## This single Application tells Argo CD to watch platform/*/application.yaml
+## in the platform repo. Every platform component that owns an application.yaml
+## in its subdirectory is automatically included — no manual registration needed.
+##
+## Applied once as part of bootstrap (bootstrap.sh does this automatically).
+##
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/name: platform-root
+    app.kubernetes.io/part-of: platform
+  name: platform-root
+  namespace: argocd
+spec:
+  destination:
+    server: https://kubernetes.default.svc
+  project: platform
+  source:
+    directory:
+      ## Include only application.yaml files — one level deep under platform/
+      include: "*/application.yaml"
+      recurse: true
+    path: platform
+    repoURL: https://github.com/rodmhgl/homelab-platform
+    targetRevision: main
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

@@ -1,0 +1,74 @@
+## Argo CD Helm values for homelab IDP
+## Chart: argo/argo-cd  (https://argoproj.github.io/argo-helm)
+## Version: 7.x
+
+global:
+  domain: ""  # Set to your ingress hostname when exposing via ingress
+
+configs:
+  params:
+    ## Run server without TLS — TLS is terminated at the ingress/LB
+    server.insecure: "true"
+
+  cm:
+    ## Allow Argo CD to manage resources in all namespaces below the
+    ## platform namespace set.  The workload ApplicationSet places apps
+    ## into the 'workloads' namespace.
+    application.resourceTrackingMethod: annotation
+
+  rbac:
+    ## Default policy — authenticated users read-only; admins full access.
+    policy.default: "role:readonly"
+    policy.csv: |
+      p, role:admin, applications, *, */*, allow
+      p, role:admin, clusters,     *, *, allow
+      p, role:admin, repositories, *, *, allow
+      p, role:admin, projects,     *, *, allow
+      g, platform-admin, role:admin
+
+server:
+  ## Replica count — single for homelab; bump to 2 for HA
+  replicas: 1
+
+  service:
+    type: ClusterIP
+
+  ## Ingress is handled separately (platform API nginx or Azure App GW)
+  ingress:
+    enabled: false
+
+applicationSet:
+  replicas: 1
+
+notifications:
+  enabled: true
+  ## Webhook to Platform API — POST /api/v1/webhooks/argocd on sync events
+  notifiers:
+    service.webhook.platform-api: |
+      url: http://platform-api.platform.svc.cluster.local:8080
+      headers:
+        - name: Content-Type
+          value: application/json
+  templates:
+    template.app-sync-status: |
+      webhook:
+        platform-api:
+          method: POST
+          path: /api/v1/webhooks/argocd
+          body: |
+            {
+              "app": "{{.app.metadata.name}}",
+              "status": "{{.app.status.sync.status}}",
+              "health": "{{.app.status.health.status}}",
+              "revision": "{{.app.status.sync.revision}}"
+            }
+  triggers:
+    trigger.on-sync-status-changed: |
+      - when: app.status.sync.status == 'Synced' || app.status.sync.status == 'OutOfSync'
+        send: [app-sync-status]
+
+redis:
+  enabled: true
+
+dex:
+  enabled: false
