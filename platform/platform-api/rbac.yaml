@@ -1,0 +1,88 @@
+---
+# ClusterRole for Platform API — RBAC permissions for K8s resource access
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: platform-api
+  labels:
+    app.kubernetes.io/name: platform-api
+    app.kubernetes.io/component: rbac
+rules:
+  # Crossplane Claims (read, list, watch for all API endpoints)
+  - apiGroups: ["azure.homelab.rodst.io"]
+    resources: ["storagebuckets", "vaults"]
+    verbs: ["get", "list", "watch"]
+
+  # Crossplane Composite Resources (for resource tree inspection)
+  - apiGroups: ["azure.homelab.rodst.io"]
+    resources: ["xstoragebuckets", "xkeyvaults"]
+    verbs: ["get", "list", "watch"]
+
+  # Crossplane Managed Resources (composed resources)
+  - apiGroups: ["azure.upbound.io"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
+
+  # External Secrets (for /api/v1/secrets/* endpoints)
+  - apiGroups: ["external-secrets.io"]
+    resources: ["externalsecrets", "secretstores", "clustersecretstores"]
+    verbs: ["get", "list", "watch"]
+
+  # Secrets (for connection secrets and ESO-created secrets)
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]
+
+  # kagent CRDs (for /api/v1/agent/ask endpoint)
+  - apiGroups: ["kagent.io"]
+    resources: ["agents", "tasks"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+  # Argo CD Applications (read-only; mutations via API, not direct)
+  - apiGroups: ["argoproj.io"]
+    resources: ["applications"]
+    verbs: ["get", "list", "watch"]
+
+  # Gatekeeper (for /api/v1/compliance/* endpoints)
+  - apiGroups: ["constraints.gatekeeper.sh"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["templates.gatekeeper.sh"]
+    resources: ["constrainttemplates"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["status.gatekeeper.sh"]
+    resources: ["constraintpodstatuses"]
+    verbs: ["get", "list", "watch"]
+
+  # Trivy Operator (for vulnerability reports)
+  - apiGroups: ["aquasecurity.github.io"]
+    resources: ["vulnerabilityreports", "configauditreports", "exposedsecretreports"]
+    verbs: ["get", "list", "watch"]
+
+  # Events (for resource events in /api/v1/infra/:kind/:name)
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch"]
+
+  # Pods and Namespaces (for health checks and investigation)
+  - apiGroups: [""]
+    resources: ["pods", "namespaces"]
+    verbs: ["get", "list", "watch"]
+
+---
+# ClusterRoleBinding — binds ClusterRole to ServiceAccount
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: platform-api
+  labels:
+    app.kubernetes.io/name: platform-api
+    app.kubernetes.io/component: rbac
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: platform-api
+subjects:
+  - kind: ServiceAccount
+    name: platform-api
+    namespace: platform

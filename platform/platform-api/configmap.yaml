@@ -1,0 +1,29 @@
+---
+# ConfigMap for non-sensitive Platform API configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: platform-api-config
+  namespace: platform
+  labels:
+    app.kubernetes.io/name: platform-api
+    app.kubernetes.io/component: config
+data:
+  # Server configuration
+  PORT: "8080"
+  LOG_LEVEL: "info"
+  SHUTDOWN_TIMEOUT: "30"
+
+  # Kubernetes client configuration
+  IN_CLUSTER: "true"
+
+  # Argo CD configuration
+  ARGOCD_SERVER_URL: "argocd-server.argocd.svc.cluster.local"
+
+  # GitHub configuration
+  GITHUB_ORG: "rodmhgl"  # Update with your GitHub org
+  PLATFORM_REPO: "homelab-platform"
+
+  # AI Operations configuration
+  KAGENT_NAMESPACE: "kagent-system"
+  HOLMESGPT_URL: "http://holmesgpt.holmesgpt-system.svc.cluster.local:8080"
