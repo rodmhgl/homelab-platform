@@ -33,9 +33,9 @@ metadata:
   namespace: argocd
 spec:
   ignoreDifferences:
-    - group: ""
+    - group: "admissionregistration.k8s.io"
       kind: ValidatingWebhookConfiguration
-      name: gatekeeper-mutating-webhook-configuration
+      name: gatekeeper-mutating-webhook-configurationadmissionregistration.k8s.io
       jqPathExpressions:
         - .webhooks[].namespaceSelector    
   destination:
