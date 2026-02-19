@@ -1,0 +1,63 @@
+## Gatekeeper (OPA) — Argo CD Application
+##
+## Installs OPA Gatekeeper via Helm and applies all ConstraintTemplate + Constraint
+## manifests from this directory. Gatekeeper is the admission-time compliance layer:
+## every CREATE/UPDATE to the API server is validated against active Constraints
+## before it is persisted.
+##
+## Sync-wave ordering (inter-Application, from the root App-of-Apps perspective):
+##   Wave 3: crossplane-config  (ProviderConfig, XRDs, Compositions)
+##   Wave 4: this Application   (Gatekeeper core + webhook registration)
+##   Wave 5: gatekeeper-constraints (ConstraintTemplates + Constraints, separate
+##            Application so templates are registered before constraints land —
+##            see gatekeeper-constraints/application.yaml)
+##
+## NOTE: ConstraintTemplates and Constraints are split into a separate wave because
+## Gatekeeper's webhook must be Running before Constraints can be created (the
+## Constraint CRDs are registered by the ConstraintTemplate controller, which only
+## runs after Gatekeeper is healthy).
+##
+## failOpen: true in values.yaml means the webhook does not block admission if
+## Gatekeeper pods are unavailable — important for homelab where HA is not used.
+##
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/name: gatekeeper
+    app.kubernetes.io/part-of: platform
+  name: gatekeeper
+  namespace: argocd
+spec:
+  destination:
+    namespace: gatekeeper-system
+    server: https://kubernetes.default.svc
+  project: platform
+  sources:
+    ## Helm chart — installs Gatekeeper core, webhook, and audit controller
+    - chart: gatekeeper
+      helm:
+        releaseName: gatekeeper
+        valueFiles:
+          - $values/platform/gatekeeper/values.yaml
+      repoURL: https://open-policy-agent.github.io/gatekeeper/charts
+      targetRevision: "3.21.0"
+    ## Values reference — platform repo
+    - path: platform/gatekeeper
+      ref: values
+      repoURL: https://github.com/rodmhgl/homelab-platform
+      targetRevision: main
+      directory:
+        ## Only pick up values.yaml — templates and constraints are in their own wave
+        include: "values.yaml"
+        recurse: false
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

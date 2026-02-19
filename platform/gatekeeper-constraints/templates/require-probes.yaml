@@ -1,0 +1,71 @@
+## ConstraintTemplate: RequireProbes
+##
+## Ensures every container in a Deployment/StatefulSet/DaemonSet declares both
+## readiness and liveness probes. Without probes:
+##   - readiness: traffic routes to pods before they're actually ready (errors)
+##   - liveness: stuck pods never restart (silent failures)
+##
+## Parameters:
+##   probeTypes ([]string): which probes to require, e.g. ["readinessProbe", "livenessProbe"]
+##
+## Example violation:
+##   Container "app" in Deployment "my-service" is missing a readinessProbe
+##
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  name: requireprobes
+spec:
+  crd:
+    spec:
+      names:
+        kind: RequireProbes
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            probeTypes:
+              description: Probe fields to require on each container.
+              type: array
+              items:
+                type: string
+                enum:
+                  - readinessProbe
+                  - livenessProbe
+                  - startupProbe
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package requireprobes
+
+        violation[{"msg": msg}] {
+          container := input_containers[_]
+          probe := input.parameters.probeTypes[_]
+          not has_probe(container, probe)
+          msg := sprintf(
+            "Container '%v' is missing a %v",
+            [container.name, probe]
+          )
+        }
+
+        has_probe(container, "readinessProbe") {
+          container.readinessProbe
+        }
+
+        has_probe(container, "livenessProbe") {
+          container.livenessProbe
+        }
+
+        has_probe(container, "startupProbe") {
+          container.startupProbe
+        }
+
+        input_containers contains container {
+          container := input.review.object.spec.containers[_]
+        }
+
+        input_containers contains container {
+          container := input.review.object.spec.template.spec.containers[_]
+        }

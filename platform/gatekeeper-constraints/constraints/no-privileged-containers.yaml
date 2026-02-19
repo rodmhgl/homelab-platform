@@ -1,0 +1,26 @@
+## Constraint: no-privileged-containers
+##
+## Prevents privileged containers in workload namespaces. Platform tooling
+## (Falco, Trivy) that legitimately needs elevated capabilities is deployed in its
+## own namespace and explicitly excluded from the match scope.
+##
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: NoPrivilegedContainers
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  name: no-privileged-containers
+spec:
+  enforcementAction: deny
+  match:
+    kinds:
+      - apiGroups: ["", "apps", "batch"]
+        kinds:
+          - Pod
+          - Deployment
+          - StatefulSet
+          - DaemonSet
+          - Job
+          - CronJob
+    namespaces:
+      - workloads

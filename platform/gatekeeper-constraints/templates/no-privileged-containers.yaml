@@ -1,0 +1,63 @@
+## ConstraintTemplate: NoPrivilegedContainers
+##
+## Blocks containers that run with privileged: true in their securityContext.
+## Privileged containers share the host kernel's capabilities and namespaces,
+## effectively bypassing container isolation — they should never be needed by
+## application workloads on this platform.
+##
+## Also blocks allowPrivilegeEscalation: true for defence-in-depth.
+##
+## No parameters — this is an unconditional deny.
+##
+## Example violation:
+##   Container "agent" has privileged: true — this is not allowed on this platform.
+##
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  name: noprivilegedcontainers
+spec:
+  crd:
+    spec:
+      names:
+        kind: NoPrivilegedContainers
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package noprivilegedcontainers
+
+        violation[{"msg": msg}] {
+          container := input_containers[_]
+          container.securityContext.privileged == true
+          msg := sprintf(
+            "Container '%v' has privileged: true — privileged containers are not allowed",
+            [container.name]
+          )
+        }
+
+        violation[{"msg": msg}] {
+          container := input_containers[_]
+          container.securityContext.allowPrivilegeEscalation == true
+          msg := sprintf(
+            "Container '%v' has allowPrivilegeEscalation: true — privilege escalation is not allowed",
+            [container.name]
+          )
+        }
+
+        input_containers contains container {
+          container := input.review.object.spec.containers[_]
+        }
+
+        input_containers contains container {
+          container := input.review.object.spec.template.spec.containers[_]
+        }
+
+        input_containers contains container {
+          container := input.review.object.spec.initContainers[_]
+        }
+
+        input_containers contains container {
+          container := input.review.object.spec.template.spec.initContainers[_]
+        }

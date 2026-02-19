@@ -1,0 +1,30 @@
+## Constraint: require-standard-labels
+##
+## Enforces that all Deployments in the workloads namespace carry the platform's
+## standard ownership labels. These labels are:
+##   - app.kubernetes.io/name       — identifies the application
+##   - app.kubernetes.io/component  — identifies the component role (api, worker, etc.)
+##   - app.kubernetes.io/managed-by — identifies the tool managing this resource
+##
+## Scaffold templates bake these labels in from day one, so compliant apps never
+## trigger this policy. It exists to catch hand-crafted or non-scaffolded deployments.
+##
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sRequiredLabels
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  name: require-standard-labels
+spec:
+  enforcementAction: deny
+  match:
+    kinds:
+      - apiGroups: ["apps"]
+        kinds: ["Deployment", "StatefulSet", "DaemonSet"]
+    namespaces:
+      - workloads
+  parameters:
+    labels:
+      - app.kubernetes.io/name
+      - app.kubernetes.io/component
+      - app.kubernetes.io/managed-by

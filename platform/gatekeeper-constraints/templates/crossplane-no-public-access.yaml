@@ -1,0 +1,39 @@
+## ConstraintTemplate: CrossplaneNoPublicAccess
+##
+## Blocks Crossplane Claims that set publicAccess: true. The XRD schema permits this
+## field to give developers the option — but this Constraint enforces that it must
+## never be enabled in production. The Composition already defaults to false; this
+## adds an admission-time guard so an explicit override cannot sneak through.
+##
+## This demonstrates defence-in-depth: Composition defaults are the first line,
+## Gatekeeper admission is the enforcement backstop that cannot be bypassed via
+## a field override in the Claim.
+##
+## No parameters — unconditional deny on any publicAccess: true.
+##
+## Example violation:
+##   StorageBucket 'my-data' has publicAccess: true — public access is not allowed
+##
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  name: crossplanenopublicaccess
+spec:
+  crd:
+    spec:
+      names:
+        kind: CrossplaneNoPublicAccess
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package crossplanenopublicaccess
+
+        violation[{"msg": msg}] {
+          input.review.object.spec.parameters.publicAccess == true
+          msg := sprintf(
+            "%v '%v' has publicAccess: true — public access to platform infrastructure is not allowed",
+            [input.review.kind.kind, input.review.object.metadata.name]
+          )
+        }

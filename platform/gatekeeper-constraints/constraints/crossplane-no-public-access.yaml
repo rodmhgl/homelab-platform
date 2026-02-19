@@ -1,0 +1,25 @@
+## Constraint: deny-public-infra
+##
+## Unconditionally blocks any Crossplane Claim that sets publicAccess: true.
+## This applies platform-wide across all namespaces — no namespace is exempt from
+## this security baseline.
+##
+## Even if a developer explicitly sets publicAccess: true in their Claim,
+## this Constraint denies it at admission before Crossplane ever sees the object.
+## The Composition defaults publicAccess to false as a first line; this is the
+## enforcement backstop that cannot be bypassed.
+##
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: CrossplaneNoPublicAccess
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  name: deny-public-infra
+spec:
+  enforcementAction: deny
+  match:
+    kinds:
+      - apiGroups: ["platform.example.com"]
+        kinds:
+          - StorageBucket
+          - Vault

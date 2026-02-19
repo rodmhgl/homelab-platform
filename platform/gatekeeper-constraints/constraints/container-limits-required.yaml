@@ -1,0 +1,26 @@
+## Constraint: container-limits-required
+##
+## Requires all containers in workload namespaces to declare CPU and memory limits.
+## Without this, a single misbehaving pod can starve all other workloads on the
+## homelab's shared node pool (Standard_B4ms × 3 nodes).
+##
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: ContainerLimitsRequired
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  name: container-limits-required
+spec:
+  enforcementAction: deny
+  match:
+    kinds:
+      - apiGroups: ["", "apps", "batch"]
+        kinds:
+          - Pod
+          - Deployment
+          - StatefulSet
+          - DaemonSet
+          - Job
+          - CronJob
+    namespaces:
+      - workloads

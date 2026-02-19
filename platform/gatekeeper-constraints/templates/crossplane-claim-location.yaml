@@ -1,0 +1,55 @@
+## ConstraintTemplate: CrossplaneClaimLocation
+##
+## Ensures Crossplane Claims only target approved Azure regions. This is the
+## Crossplane-specific "compliance at point of change" story: even though the XRD
+## accepts any location string, this Constraint rejects Claims targeting regions
+## outside the approved list before they ever reach Crossplane's reconciler.
+##
+## Without this, a developer could provision resources in expensive or restricted
+## regions. Gatekeeper enforces the policy *before* Azure is even called.
+##
+## Parameters:
+##   allowedLocations ([]string): Azure region names that are permitted
+##
+## Example violation:
+##   StorageBucket 'my-data' requests location 'westeurope' — not in allowed list
+##
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  name: crossplaneclaimlocation
+spec:
+  crd:
+    spec:
+      names:
+        kind: CrossplaneClaimLocation
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            allowedLocations:
+              description: Azure region names that Claims may target.
+              type: array
+              items:
+                type: string
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package crossplaneclaimlocation
+
+        violation[{"msg": msg}] {
+          location := input.review.object.spec.parameters.location
+          allowed := {l | l := input.parameters.allowedLocations[_]}
+          not allowed[location]
+          msg := sprintf(
+            "%v '%v' requests location '%v' which is not in the allowed list: %v",
+            [
+              input.review.kind.kind,
+              input.review.object.metadata.name,
+              location,
+              input.parameters.allowedLocations,
+            ]
+          )
+        }

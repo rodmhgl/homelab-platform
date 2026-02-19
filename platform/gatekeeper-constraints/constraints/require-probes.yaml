@@ -1,0 +1,27 @@
+## Constraint: require-probes
+##
+## Requires readiness and liveness probes on all containers in Deployment/StatefulSet/
+## DaemonSet workloads. Scaffolded services include probe stubs targeting the /health
+## and /ready endpoints; this policy ensures hand-crafted manifests also comply.
+##
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: RequireProbes
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  name: require-probes
+spec:
+  enforcementAction: deny
+  match:
+    kinds:
+      - apiGroups: ["apps"]
+        kinds:
+          - Deployment
+          - StatefulSet
+          - DaemonSet
+    namespaces:
+      - workloads
+  parameters:
+    probeTypes:
+      - readinessProbe
+      - livenessProbe

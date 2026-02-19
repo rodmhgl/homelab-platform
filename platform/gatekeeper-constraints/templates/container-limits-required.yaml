@@ -1,0 +1,73 @@
+## ConstraintTemplate: ContainerLimitsRequired
+##
+## Ensures every container in a Pod spec declares both CPU and memory limits.
+## Unbounded containers risk noisy-neighbour starvation on a shared homelab node pool.
+## Applies to Pods (and via the Deployment/StatefulSet admission path) at create time.
+##
+## No parameters — the rule is binary: limits must be set.
+##
+## Example violation:
+##   Container "app" in Deployment "my-service" has no CPU limit defined.
+##
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  name: containerlimitsrequired
+spec:
+  crd:
+    spec:
+      names:
+        kind: ContainerLimitsRequired
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package containerlimitsrequired
+
+        # Check containers in Pods submitted directly
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.containers[_]
+          missing_limits(container)
+          msg := sprintf(
+            "Container '%v' must declare both cpu and memory limits",
+            [container.name]
+          )
+        }
+
+        # Check containers inside Deployment/StatefulSet/DaemonSet pod templates
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.template.spec.containers[_]
+          missing_limits(container)
+          msg := sprintf(
+            "Container '%v' must declare both cpu and memory limits",
+            [container.name]
+          )
+        }
+
+        # Also check initContainers
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.initContainers[_]
+          missing_limits(container)
+          msg := sprintf(
+            "InitContainer '%v' must declare both cpu and memory limits",
+            [container.name]
+          )
+        }
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.template.spec.initContainers[_]
+          missing_limits(container)
+          msg := sprintf(
+            "InitContainer '%v' must declare both cpu and memory limits",
+            [container.name]
+          )
+        }
+
+        missing_limits(container) {
+          not container.resources.limits.cpu
+        }
+
+        missing_limits(container) {
+          not container.resources.limits.memory
+        }

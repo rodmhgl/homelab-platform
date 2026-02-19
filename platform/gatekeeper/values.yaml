@@ -1,0 +1,60 @@
+## Gatekeeper (OPA) Helm values for homelab IDP
+## Chart: gatekeeper/gatekeeper
+## Version: 3.21.x
+##
+## Gatekeeper installs into gatekeeper-system. The admission webhook is automatically
+## registered and validates CREATE/UPDATE operations before they reach the API server.
+##
+## Audit mode evaluates existing resources against constraints periodically, which
+## surfaces pre-existing violations in the portal compliance view.
+
+## Replicas — 1 is fine for homelab; use 3 for production HA
+replicas: 1
+
+## Audit
+auditInterval: 60          # seconds between audit runs
+constraintViolationsLimit: 20  # max violations stored per Constraint
+auditMatchKindOnly: false  # audit all resources that match ConstraintTemplate kinds
+
+## Webhook — fail open keeps the cluster usable if Gatekeeper is unavailable.
+## For homelab this is acceptable; set to Fail for production hardening.
+failOpen: true
+
+## Emit violations as Kubernetes Events for easier debugging
+emitAdmissionEvents: true
+emitAuditEvents: true
+
+## Log level (INFO is appropriate; DEBUG is very verbose)
+logLevel: INFO
+
+## Resource requests/limits
+controllerManager:
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+audit:
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+
+## Prometheus metrics (kube-prometheus-stack scrapes these via ServiceMonitor)
+metricsBackend: prometheus
+
+## Namespace exclusions — always exclude kube-system and argocd from admission
+## so platform tooling can never block itself. gatekeeper-system is automatically
+## excluded by the webhook's own namespace selector.
+excludedNamespaces:
+  - kube-system
+  - kube-node-lease
+  - kube-public
+  - argocd
+  - crossplane-system
