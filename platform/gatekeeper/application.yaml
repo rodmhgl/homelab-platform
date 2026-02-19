@@ -34,8 +34,13 @@ metadata:
 spec:
   ignoreDifferences:
     - group: "admissionregistration.k8s.io"
-      kind: ValidatingWebhookConfiguration
+      kind: MutatingWebhookConfiguration
       name: gatekeeper-mutating-webhook-configuration
+      jqPathExpressions:
+        - .webhooks[].namespaceSelector
+    - group: "admissionregistration.k8s.io"
+      kind: ValidatingWebhookConfiguration
+      name: gatekeeper-validating-webhook-configuration
       jqPathExpressions:
         - .webhooks[].namespaceSelector    
   destination:
