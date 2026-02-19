@@ -35,7 +35,7 @@ resource "azurerm_dashboard_grafana" "main" {
   resource_group_name               = azurerm_resource_group.main.name
   location                          = azurerm_resource_group.main.location
   sku                               = "Standard"
-  grafana_major_version             = 10
+  grafana_major_version             = 12
   public_network_access_enabled     = true
   zone_redundancy_enabled           = false
   api_key_enabled                   = false
