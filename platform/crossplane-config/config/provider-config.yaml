@@ -1,8 +1,8 @@
 ## ProviderConfig — Wave 2
 ##
-## Configures how providers authenticate to Azure. InjectedIdentity means the
+## Configures how providers authenticate to Azure. OIDCTokenFile means the
 ## provider pods use the Workload Identity token projected by AKS — no secretRef,
-## no client secret, nothing to rotate.
+## no client secret, nothing to rotate. (Renamed from InjectedIdentity in v1.x.)
 ##
 ## This MUST be applied after the Providers are healthy (wave 1 → wave 2 ordering).
 ## If you apply this before the provider CRDs exist, the apply fails because the
@@ -22,4 +22,4 @@ metadata:
   name: default
 spec:
   credentials:
-    source: InjectedIdentity
+    source: OIDCTokenFile
