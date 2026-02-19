@@ -8,7 +8,6 @@ apiVersion: constraints.gatekeeper.sh/v1beta1
 kind: ContainerLimitsRequired
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: "1"
   name: container-limits-required
 spec:
   enforcementAction: deny

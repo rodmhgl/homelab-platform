@@ -1,0 +1,49 @@
+## Gatekeeper ConstraintTemplates — Argo CD Application
+##
+## Applies only ConstraintTemplate manifests AFTER the Gatekeeper controller is
+## Healthy (wave 5 > wave 4). ConstraintTemplates instruct the Gatekeeper controller
+## to register new CRDs — one CRD per template (e.g., K8sRequiredLabels becomes a
+## CRD that Constraint objects can reference).
+##
+## This is the second of THREE Gatekeeper Applications:
+##   Wave 4: gatekeeper (Helm — controller + webhook)
+##   Wave 5: gatekeeper-templates (this Application — ConstraintTemplates)
+##   Wave 6: gatekeeper-constraints (Constraint instances)
+##
+## Why three Applications, not one:
+##   - The Gatekeeper controller must be Running before ConstraintTemplates can be
+##     processed (wave 4 → wave 5)
+##   - ConstraintTemplates must be processed and their CRDs registered before
+##     Constraints can be created (wave 5 → wave 6)
+##   - This is the same async CRD registration problem as Crossplane Providers,
+##     solved the same way: separate Applications with wave ordering.
+##
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/name: gatekeeper-templates
+    app.kubernetes.io/part-of: platform
+  name: gatekeeper-templates
+  namespace: argocd
+spec:
+  destination:
+    namespace: gatekeeper-system
+    server: https://kubernetes.default.svc
+  project: platform
+  source:
+    repoURL: https://github.com/rodmhgl/homelab-platform
+    targetRevision: main
+    path: platform/gatekeeper-templates
+    directory:
+      recurse: false
+      exclude: "application.yaml"
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true

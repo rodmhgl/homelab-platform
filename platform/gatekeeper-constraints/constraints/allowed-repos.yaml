@@ -14,7 +14,6 @@ apiVersion: constraints.gatekeeper.sh/v1beta1
 kind: AllowedRepos
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: "1"
   name: allowed-repos
 spec:
   enforcementAction: deny

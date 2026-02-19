@@ -1,28 +1,31 @@
 ## Gatekeeper Constraints — Argo CD Application
 ##
-## Applies all ConstraintTemplate and Constraint manifests AFTER the Gatekeeper
-## controller is Healthy (wave 5 > wave 4).
+## Applies only Constraint manifests AFTER the ConstraintTemplate CRDs have been
+## registered (wave 6 > wave 5).
 ##
-## Why a separate Application from the Gatekeeper Helm install:
-##   - ConstraintTemplate objects are processed by the Gatekeeper controller, which
-##     registers a new CRD for each template (e.g., K8sRequiredLabels, CrossplaneClaimLocation).
-##   - Constraint objects reference those CRDs. If templates and constraints are applied
-##     simultaneously, the Constraint CRDs may not exist yet, causing sync failures.
-##   - Two-wave approach: wave 4 installs Gatekeeper + registers the controller,
-##     wave 5 applies all policy objects once the controller can process them.
+## This is the third of THREE Gatekeeper Applications:
+##   Wave 4: gatekeeper (Helm — controller + webhook)
+##   Wave 5: gatekeeper-templates (ConstraintTemplates → CRD registration)
+##   Wave 6: gatekeeper-constraints (this Application — Constraint instances)
 ##
-## Sync ordering within this Application (sync-wave annotations on individual files):
-##   Wave 0: templates/  — ConstraintTemplates (register CRDs via the controller)
-##   Wave 1: constraints/ — Constraint instances (reference the template-registered CRDs)
+## Why three Applications:
+##   - ConstraintTemplate CRDs are registered asynchronously by the Gatekeeper
+##     controller after the template objects are admitted.
+##   - Constraint objects fail to sync if their corresponding CRD doesn't exist yet.
+##   - Two-Application approach (templates + constraints combined) still fails because
+##     Argo CD attempts all resources in a single Application simultaneously, only
+##     ordering them by sync-wave within a single sync operation.
+##   - Three-Application approach (mirroring Crossplane's pattern) ensures templates
+##     are fully processed before constraints are ever attempted.
 ##
-## SkipDryRunOnMissingResource=true handles the timing gap between ConstraintTemplate
-## admission and CRD registration — same pattern as crossplane-config.
+## SkipDryRunOnMissingResource=true is belt-and-suspenders for any remaining timing
+## gaps — selfHeal will retry if the first sync attempt races the CRD registration.
 ##
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-wave: "6"
   labels:
     app.kubernetes.io/managed-by: argocd
     app.kubernetes.io/name: gatekeeper-constraints
@@ -37,10 +40,9 @@ spec:
   source:
     repoURL: https://github.com/rodmhgl/homelab-platform
     targetRevision: main
-    path: platform/gatekeeper-constraints
+    path: platform/gatekeeper-constraints/constraints
     directory:
-      recurse: true
-      exclude: "application.yaml"
+      recurse: false
   syncPolicy:
     automated:
       prune: true

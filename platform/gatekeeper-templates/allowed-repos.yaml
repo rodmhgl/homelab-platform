@@ -15,7 +15,6 @@ apiVersion: templates.gatekeeper.sh/v1
 kind: ConstraintTemplate
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: "0"
   name: allowedrepos
 spec:
   crd:

@@ -13,7 +13,6 @@ apiVersion: constraints.gatekeeper.sh/v1beta1
 kind: CrossplaneNoPublicAccess
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: "1"
   name: deny-public-infra
 spec:
   enforcementAction: deny
