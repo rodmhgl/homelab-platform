@@ -1,27 +1,21 @@
-## Crossplane Argo CD Application
+## Crossplane Core Install — Argo CD Application
 ##
-## Two-source pattern: Helm chart + values from this repo (same as argocd).
+## Installs Crossplane itself via Helm. This Application MUST reach Healthy before
+## the companion crossplane-config Application (wave 2) is attempted, because
+## crossplane-config applies Provider/XRD/Composition manifests that require the
+## Crossplane CRDs (pkg.crossplane.io, apiextensions.crossplane.io) to exist first.
 ##
-## The crossplane/ directory is structured so that Argo CD applies manifests in
-## sync-wave order:
-##   Wave 0: providers/runtime-config.yaml
-##   Wave 1: providers/provider-*.yaml, functions/function-*.yaml
-##   Wave 2: config/provider-config.yaml
-##   Wave 3: xrds/x*.yaml
-##   Wave 4: compositions/*.yaml
+## Sync-wave ordering (inter-Application, enforced by root App-of-Apps):
+##   Wave 1: this Application (crossplane core + CRDs)
+##   Wave 2: crossplane-config Application (providers, XRDs, compositions)
 ##
-## ServerSideApply is required for Crossplane CRDs — they use strategic merge
-## patch annotations that only SSA understands.
-##
-## Note: Crossplane must be installed (this Application) before the sync-wave
-## sub-resources can be applied, since the Provider/ProviderConfig CRDs are
-## installed by Crossplane itself.
+## ServerSideApply is required — Crossplane CRDs use strategic merge annotations
+## that client-side apply does not handle correctly.
 ##
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   annotations:
-    ## Crossplane installs before its providers (wave ordering is within this app's resources)
     argocd.argoproj.io/sync-wave: "1"
   labels:
     app.kubernetes.io/managed-by: argocd
@@ -35,7 +29,7 @@ spec:
     server: https://kubernetes.default.svc
   project: platform
   sources:
-    ## Helm chart — Crossplane core install
+    ## Helm chart — installs Crossplane core + all Crossplane CRDs
     - chart: crossplane
       helm:
         releaseName: crossplane
@@ -43,23 +37,19 @@ spec:
           - $values/platform/crossplane/values.yaml
       repoURL: https://charts.crossplane.io/stable
       targetRevision: "1.18.2"
-    ## Values + all provider/XRD/Composition manifests from this repo
+    ## Values file only — no manifests here, all manifests are in crossplane-config
     - path: platform/crossplane
       ref: values
       repoURL: https://github.com/rodmhgl/homelab-platform
       targetRevision: main
       directory:
-        ## Include only the YAML manifests in subdirs — not values.yaml or application.yaml
-        ## Argo CD recurses into providers/, config/, functions/, xrds/, compositions/
-        recurse: true
-        exclude: "application.yaml"
+        ## Only pick up values.yaml — exclude everything else
+        include: "values.yaml"
+        recurse: false
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      ## Required for Crossplane CRDs (strategic merge patch annotations)
       - ServerSideApply=true
-      ## Respect the sync-wave annotations on all sub-resources
-      - RespectIgnoreDifferences=true

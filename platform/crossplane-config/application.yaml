@@ -1,0 +1,54 @@
+## Crossplane Config — Argo CD Application
+##
+## Applies all Crossplane configuration manifests AFTER Crossplane core is healthy.
+## This separation is mandatory: the crossplane Application (wave 1) must be Healthy
+## before this one (wave 2) is attempted, because Provider/Function/XRD/Composition
+## manifests require the Crossplane CRDs to exist first.
+##
+## If Argo CD syncs both simultaneously, it gets:
+##   "The Kubernetes API could not find pkg.crossplane.io/Provider"
+## because the CRDs haven't been registered yet.
+##
+## Sync-wave ordering within this Application:
+##   Wave 0: providers/runtime-config.yaml   (DeploymentRuntimeConfig)
+##   Wave 1: providers/provider-*.yaml       (Providers)
+##           functions/function-*.yaml       (Functions)
+##   Wave 2: config/provider-config.yaml     (ProviderConfig — needs healthy Providers)
+##   Wave 3: xrds/x*.yaml                    (XRDs — needs ProviderConfig)
+##   Wave 4: compositions/*.yaml             (Compositions — needs XRDs)
+##
+## The retry loop (automated selfHeal) means Argo CD will re-try each wave until
+## the resources become Healthy before moving on.
+##
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/name: crossplane-config
+    app.kubernetes.io/part-of: platform
+  name: crossplane-config
+  namespace: argocd
+spec:
+  destination:
+    namespace: crossplane-system
+    server: https://kubernetes.default.svc
+  project: platform
+  source:
+    repoURL: https://github.com/rodmhgl/homelab-platform
+    targetRevision: main
+    path: platform/crossplane-config
+    directory:
+      recurse: true
+      ## Exclude this application.yaml itself from the sync
+      exclude: "application.yaml"
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
