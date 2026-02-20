@@ -9,7 +9,7 @@ resources:
   - serviceaccount.yaml
   - rbac.yaml
   - configmap.yaml
-  - secret.yaml
+  - externalsecrets  # ExternalSecret resources for Azure Key Vault integration
   - deployment.yaml
   - service.yaml
 

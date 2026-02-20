@@ -26,9 +26,9 @@ spec:
         app.kubernetes.io/component: api
         app.kubernetes.io/part-of: homelab-platform
       annotations:
-        # Force pod restart when ConfigMap or Secret changes
+        # Force pod restart when ConfigMap changes
+        # Note: ExternalSecret-managed secrets don't need checksums (ESO handles updates)
         checksum/config: "{{ include (print $.Template.BasePath \"/configmap.yaml\") . | sha256sum }}"
-        checksum/secret: "{{ include (print $.Template.BasePath \"/secret.yaml\") . | sha256sum }}"
     spec:
       serviceAccountName: platform-api
       securityContext:
