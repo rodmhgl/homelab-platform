@@ -70,14 +70,14 @@ type RetryBackoff struct {
 
 // ApplicationStatus contains information about the application's current state
 type ApplicationStatus struct {
-	Resources      []ResourceStatus    `json:"resources,omitempty"`
-	Sync           SyncStatus          `json:"sync"`
-	Health         HealthStatus        `json:"health"`
-	History        []RevisionHistory   `json:"history,omitempty"`
+	Resources      []ResourceStatus       `json:"resources,omitempty"`
+	Sync           SyncStatus             `json:"sync"`
+	Health         HealthStatus           `json:"health"`
+	History        []RevisionHistory      `json:"history,omitempty"`
 	Conditions     []ApplicationCondition `json:"conditions,omitempty"`
-	ReconciledAt   *time.Time          `json:"reconciledAt,omitempty"`
-	OperationState *OperationState     `json:"operationState,omitempty"`
-	Summary        ApplicationSummary  `json:"summary,omitempty"`
+	ReconciledAt   *time.Time             `json:"reconciledAt,omitempty"`
+	OperationState *OperationState        `json:"operationState,omitempty"`
+	Summary        ApplicationSummary     `json:"summary,omitempty"`
 }
 
 // ResourceStatus holds the current sync and health status of a resource
@@ -94,9 +94,9 @@ type ResourceStatus struct {
 
 // SyncStatus contains information about the currently observed live and desired states of an application
 type SyncStatus struct {
-	Status     string    `json:"status"` // Synced, OutOfSync, Unknown
+	Status     string     `json:"status"` // Synced, OutOfSync, Unknown
 	ComparedTo ComparedTo `json:"comparedTo,omitempty"`
-	Revision   string    `json:"revision,omitempty"`
+	Revision   string     `json:"revision,omitempty"`
 }
 
 // ComparedTo contains application source information
@@ -113,9 +113,9 @@ type HealthStatus struct {
 
 // RevisionHistory contains information about a previous sync
 type RevisionHistory struct {
-	Revision   string     `json:"revision"`
-	DeployedAt time.Time  `json:"deployedAt"`
-	ID         int64      `json:"id"`
+	Revision   string            `json:"revision"`
+	DeployedAt time.Time         `json:"deployedAt"`
+	ID         int64             `json:"id"`
 	Source     ApplicationSource `json:"source,omitempty"`
 }
 
@@ -128,12 +128,12 @@ type ApplicationCondition struct {
 
 // OperationState contains information about ongoing or recent application operations
 type OperationState struct {
-	Operation  Operation  `json:"operation"`
-	Phase      string     `json:"phase"` // Running, Succeeded, Failed, Error, Terminating
-	Message    string     `json:"message,omitempty"`
+	Operation  Operation   `json:"operation"`
+	Phase      string      `json:"phase"` // Running, Succeeded, Failed, Error, Terminating
+	Message    string      `json:"message,omitempty"`
 	SyncResult *SyncResult `json:"syncResult,omitempty"`
-	StartedAt  time.Time  `json:"startedAt"`
-	FinishedAt *time.Time `json:"finishedAt,omitempty"`
+	StartedAt  time.Time   `json:"startedAt"`
+	FinishedAt *time.Time  `json:"finishedAt,omitempty"`
 }
 
 // Operation contains information about the operation being performed
@@ -151,8 +151,8 @@ type SyncOperation struct {
 
 // SyncResult contains the result of a sync operation
 type SyncResult struct {
-	Resources []ResourceResult `json:"resources,omitempty"`
-	Revision  string           `json:"revision"`
+	Resources []ResourceResult  `json:"resources,omitempty"`
+	Revision  string            `json:"revision"`
 	Source    ApplicationSource `json:"source,omitempty"`
 }
 
@@ -172,8 +172,8 @@ type ResourceResult struct {
 
 // ApplicationSummary contains a summary of the application's state
 type ApplicationSummary struct {
-	ExternalURLs []string            `json:"externalURLs,omitempty"`
-	Images       []string            `json:"images,omitempty"`
+	ExternalURLs []string `json:"externalURLs,omitempty"`
+	Images       []string `json:"images,omitempty"`
 }
 
 // ApplicationList is a list of Application resources
@@ -183,10 +183,10 @@ type ApplicationList struct {
 
 // SyncRequest represents a request to sync an application
 type SyncRequest struct {
-	Revision    string   `json:"revision,omitempty"`
-	Prune       bool     `json:"prune,omitempty"`
-	DryRun      bool     `json:"dryRun,omitempty"`
-	SyncOptions []string `json:"syncOptions,omitempty"`
+	Revision    string         `json:"revision,omitempty"`
+	Prune       bool           `json:"prune,omitempty"`
+	DryRun      bool           `json:"dryRun,omitempty"`
+	SyncOptions []string       `json:"syncOptions,omitempty"`
 	Resources   []SyncResource `json:"resources,omitempty"`
 }
 
@@ -206,13 +206,13 @@ type ListAppsResponse struct {
 
 // ApplicationSummaryResponse is a simplified application view for list endpoints
 type ApplicationSummaryResponse struct {
-	Name         string    `json:"name"`
-	Namespace    string    `json:"namespace,omitempty"`
-	Project      string    `json:"project"`
-	SyncStatus   string    `json:"syncStatus"`
-	HealthStatus string    `json:"healthStatus"`
-	RepoURL      string    `json:"repoURL"`
-	Path         string    `json:"path,omitempty"`
-	Revision     string    `json:"revision,omitempty"`
+	Name         string     `json:"name"`
+	Namespace    string     `json:"namespace,omitempty"`
+	Project      string     `json:"project"`
+	SyncStatus   string     `json:"syncStatus"`
+	HealthStatus string     `json:"healthStatus"`
+	RepoURL      string     `json:"repoURL"`
+	Path         string     `json:"path,omitempty"`
+	Revision     string     `json:"revision,omitempty"`
 	LastDeployed *time.Time `json:"lastDeployed,omitempty"`
 }

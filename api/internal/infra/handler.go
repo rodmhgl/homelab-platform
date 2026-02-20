@@ -14,18 +14,22 @@ import (
 
 // Handler handles infrastructure API requests
 type Handler struct {
-	client *Client
+	client       *Client
+	githubClient *GitHubClient
 }
 
 // NewHandler creates a new infrastructure handler
-func NewHandler(cfg *Config) (*Handler, error) {
+func NewHandler(cfg *Config, githubToken string) (*Handler, error) {
 	client, err := NewClient(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kubernetes client: %w", err)
 	}
 
+	githubClient := NewGitHubClient(githubToken)
+
 	return &Handler{
-		client: client,
+		client:       client,
+		githubClient: githubClient,
 	}, nil
 }
 
@@ -410,4 +414,84 @@ func parseEvents(events []corev1.Event) []KubernetesEvent {
 	}
 
 	return result
+}
+
+// HandleCreateClaim handles POST /api/v1/infra
+// Creates a Crossplane Claim by committing YAML to the app's Git repository
+func (h *Handler) HandleCreateClaim(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// 1. Parse request
+	var req CreateClaimRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		slog.Error("Failed to decode request", "error", err)
+		http.Error(w, fmt.Sprintf(`{"error":"invalid request body: %s"}`, err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	slog.Info("Creating infrastructure Claim",
+		"kind", req.Kind,
+		"name", req.Name,
+		"namespace", req.Namespace,
+		"repo", fmt.Sprintf("%s/%s", req.RepoOwner, req.RepoName),
+	)
+
+	// 2. Validate request
+	if err := validateCreateClaimRequest(&req); err != nil {
+		slog.Error("Request validation failed", "error", err)
+		http.Error(w, fmt.Sprintf(`{"error":"validation failed: %s"}`, err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	// 3. Validate against Gatekeeper constraints
+	if err := validateAgainstGatekeeperConstraints(req.Kind, req.Parameters); err != nil {
+		slog.Error("Gatekeeper constraint violation", "error", err, "kind", req.Kind)
+		http.Error(w, fmt.Sprintf(`{"error":"policy violation: %s"}`, err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	// 4. Generate YAML
+	yamlContent, err := h.generateClaimYAML(&req)
+	if err != nil {
+		slog.Error("Failed to generate YAML", "error", err)
+		http.Error(w, fmt.Sprintf(`{"error":"failed to generate claim YAML: %s"}`, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	// 5. Commit to GitHub
+	filePath := fmt.Sprintf("k8s/claims/%s.yaml", req.Name)
+	commitMessage := buildCommitMessage(&req)
+
+	commitSHA, err := h.githubClient.CommitClaim(ctx, req.RepoOwner, req.RepoName, filePath, yamlContent, commitMessage)
+	if err != nil {
+		slog.Error("Failed to commit to GitHub", "error", err)
+		http.Error(w, fmt.Sprintf(`{"error":"failed to commit to repository: %s"}`, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	// 6. Build response
+	response := CreateClaimResponse{
+		Success:          true,
+		Message:          "Claim committed successfully. Argo CD will sync it to the cluster.",
+		Kind:             req.Kind,
+		Name:             req.Name,
+		Namespace:        req.Namespace,
+		CommitSHA:        commitSHA,
+		FilePath:         filePath,
+		RepoURL:          fmt.Sprintf("https://github.com/%s/%s", req.RepoOwner, req.RepoName),
+		ConnectionSecret: req.Name, // Connection secret name matches claim name
+	}
+
+	slog.Info("Claim committed successfully",
+		"kind", req.Kind,
+		"name", req.Name,
+		"commit_sha", commitSHA,
+		"file_path", filePath,
+	)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		slog.Error("Failed to encode response", "error", err)
+	}
 }

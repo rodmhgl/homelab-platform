@@ -2,10 +2,10 @@ package compliance
 
 // SummaryResponse returns overall compliance metrics
 type SummaryResponse struct {
-	ComplianceScore          float64        `json:"complianceScore"`          // Percentage (0-100)
-	TotalViolations          int            `json:"totalViolations"`
-	TotalVulnerabilities     int            `json:"totalVulnerabilities"`
-	ViolationsBySeverity     map[string]int `json:"violationsBySeverity"`     // policy, config, security
+	ComplianceScore           float64        `json:"complianceScore"` // Percentage (0-100)
+	TotalViolations           int            `json:"totalViolations"`
+	TotalVulnerabilities      int            `json:"totalVulnerabilities"`
+	ViolationsBySeverity      map[string]int `json:"violationsBySeverity"`      // policy, config, security
 	VulnerabilitiesBySeverity map[string]int `json:"vulnerabilitiesBySeverity"` // CRITICAL, HIGH, MEDIUM, LOW
 }
 
@@ -17,9 +17,9 @@ type PoliciesResponse struct {
 // Policy represents a Gatekeeper ConstraintTemplate
 type Policy struct {
 	Name        string                 `json:"name"`
-	Kind        string                 `json:"kind"`        // ConstraintTemplate kind
+	Kind        string                 `json:"kind"` // ConstraintTemplate kind
 	Description string                 `json:"description"`
-	Scope       []string               `json:"scope"`       // Namespaces or cluster-wide
+	Scope       []string               `json:"scope"` // Namespaces or cluster-wide
 	Parameters  map[string]interface{} `json:"parameters,omitempty"`
 }
 
@@ -32,7 +32,7 @@ type ViolationsResponse struct {
 type Violation struct {
 	ConstraintName string `json:"constraintName"`
 	ConstraintKind string `json:"constraintKind"`
-	Resource       string `json:"resource"`   // namespace/kind/name
+	Resource       string `json:"resource"` // namespace/kind/name
 	Namespace      string `json:"namespace"`
 	Message        string `json:"message"`
 	Timestamp      string `json:"timestamp,omitempty"`

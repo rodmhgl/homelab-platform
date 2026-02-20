@@ -27,17 +27,17 @@ type Config struct {
 	ShutdownTimeout int    `envconfig:"SHUTDOWN_TIMEOUT" default:"30"`
 
 	// Kubernetes API configuration
-	KubeConfig      string `envconfig:"KUBECONFIG"`
-	InCluster       bool   `envconfig:"IN_CLUSTER" default:"true"`
+	KubeConfig string `envconfig:"KUBECONFIG"`
+	InCluster  bool   `envconfig:"IN_CLUSTER" default:"true"`
 
 	// Argo CD configuration
 	ArgocdServerURL string `envconfig:"ARGOCD_SERVER_URL" required:"true"`
 	ArgocdToken     string `envconfig:"ARGOCD_TOKEN" required:"true"`
 
 	// GitHub configuration (for GitOps commits)
-	GithubToken     string `envconfig:"GITHUB_TOKEN" required:"true"`
-	GithubOrg       string `envconfig:"GITHUB_ORG" required:"true"`
-	PlatformRepo    string `envconfig:"PLATFORM_REPO" default:"homelab-platform"`
+	GithubToken  string `envconfig:"GITHUB_TOKEN" required:"true"`
+	GithubOrg    string `envconfig:"GITHUB_ORG" required:"true"`
+	PlatformRepo string `envconfig:"PLATFORM_REPO" default:"homelab-platform"`
 
 	// AI Operations configuration
 	OpenAIAPIKey    string `envconfig:"OPENAI_API_KEY"`
@@ -102,7 +102,7 @@ func main() {
 	infraHandler, err := infra.NewHandler(&infra.Config{
 		KubeConfig: cfg.KubeConfig,
 		InCluster:  cfg.InCluster,
-	})
+	}, cfg.GithubToken)
 	if err != nil {
 		slog.Error("Failed to initialize infra handler", "error", err)
 		os.Exit(1)
@@ -193,7 +193,7 @@ func setupRouter(scaffoldHandler *scaffold.Handler, argocdHandler *argocd.Handle
 		// Infrastructure endpoints
 		r.Route("/infra", func(r chi.Router) {
 			r.Get("/", infraHandler.HandleListAllClaims)
-			r.Post("/", notImplementedHandler("POST /api/v1/infra"))
+			r.Post("/", infraHandler.HandleCreateClaim)
 			r.Get("/storage", infraHandler.HandleListStorageClaims)
 			r.Get("/vaults", infraHandler.HandleListVaultClaims)
 			r.Route("/{kind}/{name}", func(r chi.Router) {

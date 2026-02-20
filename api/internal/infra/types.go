@@ -4,10 +4,10 @@ import "time"
 
 // GetResourceResponse is the response for GET /api/v1/infra/:kind/:name
 type GetResourceResponse struct {
-	Claim     ClaimResource       `json:"claim"`
-	Composite *CompositeResource  `json:"composite,omitempty"`
-	Managed   []ManagedResource   `json:"managed"`
-	Events    []KubernetesEvent   `json:"events"`
+	Claim     ClaimResource      `json:"claim"`
+	Composite *CompositeResource `json:"composite,omitempty"`
+	Managed   []ManagedResource  `json:"managed"`
+	Events    []KubernetesEvent  `json:"events"`
 }
 
 // ListClaimsResponse is the response for GET /api/v1/infra, /api/v1/infra/storage, /api/v1/infra/vaults
@@ -79,12 +79,36 @@ type ResourceRef struct {
 
 // KubernetesEvent represents a Kubernetes event for debugging
 type KubernetesEvent struct {
-	Type              string    `json:"type"` // Normal, Warning
-	Reason            string    `json:"reason"`
-	Message           string    `json:"message"`
-	InvolvedObject    string    `json:"involvedObject"` // "kind/name"
-	Source            string    `json:"source,omitempty"`
-	Count             int32     `json:"count,omitempty"`
-	FirstTimestamp    time.Time `json:"firstTimestamp"`
-	LastTimestamp     time.Time `json:"lastTimestamp"`
+	Type           string    `json:"type"` // Normal, Warning
+	Reason         string    `json:"reason"`
+	Message        string    `json:"message"`
+	InvolvedObject string    `json:"involvedObject"` // "kind/name"
+	Source         string    `json:"source,omitempty"`
+	Count          int32     `json:"count,omitempty"`
+	FirstTimestamp time.Time `json:"firstTimestamp"`
+	LastTimestamp  time.Time `json:"lastTimestamp"`
+}
+
+// CreateClaimRequest is the request body for POST /api/v1/infra
+type CreateClaimRequest struct {
+	Kind       string                 `json:"kind"`             // "StorageBucket" or "Vault"
+	Name       string                 `json:"name"`             // DNS label format
+	Namespace  string                 `json:"namespace"`        // Target namespace
+	Parameters map[string]interface{} `json:"parameters"`       // XRD-specific params
+	RepoOwner  string                 `json:"repoOwner"`        // GitHub org/user
+	RepoName   string                 `json:"repoName"`         // App repo name
+	Labels     map[string]string      `json:"labels,omitempty"` // Optional labels
+}
+
+// CreateClaimResponse is the response for POST /api/v1/infra
+type CreateClaimResponse struct {
+	Success          bool   `json:"success"`
+	Message          string `json:"message,omitempty"`
+	Kind             string `json:"kind"`
+	Name             string `json:"name"`
+	Namespace        string `json:"namespace"`
+	CommitSHA        string `json:"commitSha"`
+	FilePath         string `json:"filePath"`
+	RepoURL          string `json:"repoUrl"`
+	ConnectionSecret string `json:"connectionSecret"`
 }

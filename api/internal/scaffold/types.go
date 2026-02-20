@@ -21,11 +21,11 @@ type ScaffoldRequest struct {
 	EnableKeyVault bool `json:"enable_keyvault,omitempty"`
 
 	// Storage configuration (if enabled)
-	StorageLocation        string `json:"storage_location,omitempty"`
-	StorageReplication     string `json:"storage_replication,omitempty"`
-	StoragePublicAccess    bool   `json:"storage_public_access,omitempty"`
-	StorageContainerName   string `json:"storage_container_name,omitempty"`
-	StorageConnectionEnv   string `json:"storage_connection_env,omitempty"`
+	StorageLocation      string `json:"storage_location,omitempty"`
+	StorageReplication   string `json:"storage_replication,omitempty"`
+	StoragePublicAccess  bool   `json:"storage_public_access,omitempty"`
+	StorageContainerName string `json:"storage_container_name,omitempty"`
+	StorageConnectionEnv string `json:"storage_connection_env,omitempty"`
 
 	// Key Vault configuration (if enabled)
 	VaultLocation      string `json:"vault_location,omitempty"`
@@ -39,8 +39,8 @@ type ScaffoldRequest struct {
 	Owners    string `json:"owners,omitempty"`
 
 	// GitHub configuration (optional overrides)
-	GithubOrg  string `json:"github_org,omitempty"`
-	GithubRepo string `json:"github_repo,omitempty"`
+	GithubOrg   string `json:"github_org,omitempty"`
+	GithubRepo  string `json:"github_repo,omitempty"`
 	RepoPrivate bool   `json:"repo_private,omitempty"`
 }
 
@@ -51,8 +51,8 @@ type ScaffoldResponse struct {
 	Error   string `json:"error,omitempty"`
 
 	// Created resources
-	RepoURL          string `json:"repo_url,omitempty"`
-	RepoName         string `json:"repo_name,omitempty"`
+	RepoURL            string `json:"repo_url,omitempty"`
+	RepoName           string `json:"repo_name,omitempty"`
 	PlatformConfigPath string `json:"platform_config_path,omitempty"`
 
 	// Argo CD information
@@ -62,11 +62,11 @@ type ScaffoldResponse struct {
 // ArgoAppConfig represents the apps/<name>/config.json file structure
 // that the Argo CD ApplicationSet watches
 type ArgoAppConfig struct {
-	Name        string `json:"name"`
-	RepoURL     string `json:"repoUrl"`
-	Path        string `json:"path"`
-	Namespace   string `json:"namespace"`
-	Project     string `json:"project"`
-	SyncPolicy  string `json:"syncPolicy"`
-	AutoSync    bool   `json:"autoSync"`
+	Name       string `json:"name"`
+	RepoURL    string `json:"repoUrl"`
+	Path       string `json:"path"`
+	Namespace  string `json:"namespace"`
+	Project    string `json:"project"`
+	SyncPolicy string `json:"syncPolicy"`
+	AutoSync   bool   `json:"autoSync"`
 }

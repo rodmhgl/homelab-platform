@@ -165,14 +165,14 @@ func (c *Client) ListVulnerabilityReportsInWorkloads(ctx context.Context) (*unst
 
 	// Filter out platform namespaces
 	excludedNamespaces := map[string]bool{
-		"kube-system":        true,
-		"argocd":             true,
-		"crossplane-system":  true,
-		"gatekeeper-system":  true,
-		"trivy-system":       true,
-		"external-secrets":   true,
-		"monitoring":         true,
-		"platform":           true,
+		"kube-system":       true,
+		"argocd":            true,
+		"crossplane-system": true,
+		"gatekeeper-system": true,
+		"trivy-system":      true,
+		"external-secrets":  true,
+		"monitoring":        true,
+		"platform":          true,
 	}
 
 	filtered := &unstructured.UnstructuredList{
