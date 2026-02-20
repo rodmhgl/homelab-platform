@@ -1,0 +1,322 @@
+# kube-prometheus-stack Helm Chart Values
+# Chart: prometheus-community/kube-prometheus-stack
+# Version: v66.3.1 (targets Prometheus v2.56.2, Grafana v11.3.1)
+
+# Global settings
+fullnameOverride: monitoring
+
+# Prometheus Operator configuration
+prometheusOperator:
+  enabled: true
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# Prometheus instance configuration
+prometheus:
+  enabled: true
+
+  prometheusSpec:
+    # Retention configuration
+    retention: 15d
+    retentionSize: "10GB"
+
+    # Storage
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 20Gi
+
+    # Resource limits
+    resources:
+      requests:
+        cpu: 500m
+        memory: 2Gi
+      limits:
+        cpu: 1000m
+        memory: 4Gi
+
+    # ServiceMonitor selector — watch all namespaces
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+
+    # Enable all default ServiceMonitors
+    serviceMonitorSelector: {}
+    podMonitorSelector: {}
+
+    # Security context
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      fsGroup: 2000
+      seccompProfile:
+        type: RuntimeDefault
+
+    # Scrape configs for platform components
+    additionalScrapeConfigs:
+      # Crossplane metrics
+      - job_name: 'crossplane'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - crossplane-system
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            regex: crossplane
+            action: keep
+          - source_labels: [__meta_kubernetes_pod_container_port_name]
+            regex: metrics
+            action: keep
+
+      # Gatekeeper metrics
+      - job_name: 'gatekeeper'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - gatekeeper-system
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            regex: gatekeeper
+            action: keep
+          - source_labels: [__meta_kubernetes_pod_container_port_name]
+            regex: metrics
+            action: keep
+
+      # Trivy Operator metrics
+      - job_name: 'trivy-operator'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - trivy-system
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+            regex: trivy-operator
+            action: keep
+
+      # Platform API metrics
+      - job_name: 'platform-api'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - platform
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            regex: platform-api
+            action: keep
+          - source_labels: [__meta_kubernetes_pod_container_port_name]
+            regex: metrics
+            action: keep
+
+# Alertmanager configuration
+alertmanager:
+  enabled: true
+
+  alertmanagerSpec:
+    # Storage
+    storage:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 5Gi
+
+    # Resource limits
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 100m
+        memory: 256Mi
+
+    # Security context
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      fsGroup: 2000
+      seccompProfile:
+        type: RuntimeDefault
+
+  # Alertmanager configuration
+  config:
+    global:
+      resolve_timeout: 5m
+
+    route:
+      group_by: ['namespace', 'alertname']
+      group_wait: 10s
+      group_interval: 10s
+      repeat_interval: 12h
+      receiver: 'holmesgpt'
+      routes:
+        # Critical alerts go to HolmesGPT for AI analysis
+        - match:
+            severity: critical
+          receiver: holmesgpt
+          continue: true
+
+        # High severity alerts also go to HolmesGPT
+        - match:
+            severity: high
+          receiver: holmesgpt
+          continue: true
+
+    receivers:
+      # HolmesGPT webhook receiver (will be configured after HolmesGPT install)
+      - name: 'holmesgpt'
+        webhook_configs:
+          - url: 'http://holmesgpt.holmesgpt.svc.cluster.local:8080/webhook'
+            send_resolved: true
+
+      # Default null receiver
+      - name: 'null'
+
+# Grafana configuration
+grafana:
+  enabled: true
+
+  # Admin credentials
+  adminPassword: admin  # CHANGE IN PRODUCTION
+
+  # Persistence
+  persistence:
+    enabled: true
+    size: 5Gi
+
+  # Resources
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 200m
+      memory: 512Mi
+
+  # Security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 472
+    fsGroup: 472
+    seccompProfile:
+      type: RuntimeDefault
+
+  # Datasources
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          url: http://monitoring-prometheus:9090
+          access: proxy
+          isDefault: true
+          editable: false
+
+  # Dashboard providers
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: 'platform'
+          orgId: 1
+          folder: 'Platform'
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/platform
+
+        - name: 'crossplane'
+          orgId: 1
+          folder: 'Crossplane'
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/crossplane
+
+        - name: 'compliance'
+          orgId: 1
+          folder: 'Compliance'
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/compliance
+
+  # ConfigMaps with dashboards (will be created separately)
+  dashboardsConfigMaps:
+    platform: "grafana-dashboards-platform"
+    crossplane: "grafana-dashboards-crossplane"
+    compliance: "grafana-dashboards-compliance"
+
+  # Grafana ini configuration
+  grafana.ini:
+    server:
+      root_url: "%(protocol)s://%(domain)s/grafana/"
+      serve_from_sub_path: true
+
+    auth.anonymous:
+      enabled: false
+
+    security:
+      admin_password: admin  # CHANGE IN PRODUCTION
+
+# Node Exporter configuration
+nodeExporter:
+  enabled: true
+
+# Kube-State-Metrics configuration
+kubeStateMetrics:
+  enabled: true
+
+# Default rules (alerts and recording rules)
+defaultRules:
+  create: true
+  rules:
+    alertmanager: true
+    etcd: false  # Not running etcd in AKS
+    configReloaders: true
+    general: true
+    k8s: true
+    kubeApiserverAvailability: true
+    kubeApiserverSlos: true
+    kubelet: true
+    kubeProxy: false  # Using Cilium instead of kube-proxy
+    kubernetesApps: true
+    kubernetesResources: true
+    kubernetesStorage: true
+    kubernetesSystem: true
+    kubeSchedulerAlerting: false  # Managed by AKS
+    kubeSchedulerRecording: false  # Managed by AKS
+    network: true
+    node: true
+    nodeExporterAlerting: true
+    nodeExporterRecording: true
+    prometheus: true
+    prometheusOperator: true
+
+# Service Monitors for platform components
+# These will auto-discover services with the right labels
+prometheus-node-exporter:
+  prometheus:
+    monitor:
+      enabled: true
+
+kube-state-metrics:
+  prometheus:
+    monitor:
+      enabled: true
