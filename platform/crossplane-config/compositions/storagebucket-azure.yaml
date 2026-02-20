@@ -138,9 +138,9 @@ spec:
                   string:
                     fmt: "rg-%s-%s"
                 toFieldPath: spec.forProvider.resourceGroupName
-              ## Storage account name: "st" + claimname, lowercase, strip [-._]
+              ## Storage account name: "st" + claimname, lowercase, alphanumeric only
               ## Azure constraint: 3-24 chars, lowercase alphanumeric only.
-              ## We truncate at 22 chars to leave room for the "st" prefix.
+              ## Note: Regexp transform removes [-._] characters by matching alphanumeric only
               - type: CombineFromComposite
                 combine:
                   variables:
@@ -152,18 +152,8 @@ spec:
                 transforms:
                   - type: string
                     string:
-                      type: Regexp
-                      regexp:
-                        match: '[-._]'
-                        replace: ''
-                  - type: string
-                    string:
                       type: Convert
                       convert: ToLower
-                  - type: string
-                    string:
-                      type: TrimPrefix
-                      trim: ""
               ## Unique connection secret name per account
               - type: CombineFromComposite
                 combine:
@@ -222,12 +212,6 @@ spec:
                     fmt: "st%s"
                 toFieldPath: spec.forProvider.storageAccountName
                 transforms:
-                  - type: string
-                    string:
-                      type: Regexp
-                      regexp:
-                        match: '[-._]'
-                        replace: ''
                   - type: string
                     string:
                       type: Convert
