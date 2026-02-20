@@ -136,6 +136,26 @@ az keyvault secret set \
 
 ## Troubleshooting
 
+### Deployment fails with "field not declared in schema"
+
+**Error:** `.spec.template.spec.containers[].securityContext.fsGroup: field not declared in schema`
+
+**Cause:** The `fsGroup` field belongs in `podSecurityContext` (pod-level), not `securityContext` (container-level).
+
+**Solution:** Use the corrected values.yaml structure:
+
+```yaml
+podSecurityContext:
+  enabled: true
+  fsGroup: 1000
+
+securityContext:
+  enabled: true
+  runAsNonRoot: true
+  runAsUser: 1000
+  # ... other container-level settings
+```
+
 ### ClusterSecretStore shows NotReady
 
 Check the ESO controller logs:

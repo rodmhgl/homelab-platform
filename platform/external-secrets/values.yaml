@@ -44,15 +44,23 @@ resources:
     cpu: 50m
     memory: 128Mi
 
-## SecurityContext: run as non-root (defense in depth).
+## Pod-level security context: file permissions across containers.
+podSecurityContext:
+  enabled: true
+  fsGroup: 1000
+
+## Container-level security context: run as non-root (defense in depth).
 securityContext:
+  enabled: true
   runAsNonRoot: true
   runAsUser: 1000
-  fsGroup: 1000
+  allowPrivilegeEscalation: false
   capabilities:
     drop:
       - ALL
   readOnlyRootFilesystem: true
+  seccompProfile:
+    type: RuntimeDefault
 
 ## Webhook: ESO validates SecretStore and ExternalSecret manifests at admission
 ## time. In production, set failurePolicy: Fail. For homelab, Ignore allows the
