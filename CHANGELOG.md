@@ -6,6 +6,41 @@ All notable changes to the homelab-platform project.
 
 ### Added
 
+**2026-02-20: Falco Runtime Security**
+
+- ✅ **Falco Helm Install** (`platform/falco/application.yaml`)
+  - Deployed Falco v8.0.0 (app version 0.43.0) via Helm chart
+  - Wave 8 positioning (after Trivy Operator wave 7)
+  - Modern eBPF driver (`modern_ebpf`) with CO-RE for AKS Ubuntu nodes
+  - Argo CD Application with ServerSideApply and retry logic for kernel module loading
+  - Chart source: `https://falcosecurity.github.io/charts`
+
+- ✅ **Falco Configuration** (`platform/falco/values.yaml`)
+  - Modern eBPF driver configuration (no kernel module compilation required)
+  - JSON output enabled for structured event logging
+  - Priority threshold set to WARNING (filters out NOTICE-level noise)
+  - Log level: info, syscall drop threshold: 1%
+  - gRPC output temporarily disabled (will be enabled for Falcosidekick integration)
+  - Resource limits: 1000m CPU / 1Gi memory
+
+- ✅ **4 Custom Falco Rules** (inline in `values.yaml`)
+  - **Unexpected Shell Spawned in Container** (WARNING) — detects shell execution via kubectl exec or exploits
+  - **Sensitive File Read in Container** (ERROR) — monitors /etc/shadow, SSH keys, .kube/config access
+  - **Binary Written to Container Filesystem** (WARNING) — container drift detection (writes to /bin, /usr/bin)
+  - **Unexpected Network Connection from Container** (WARNING) — suspicious outbound ports (IRC 6667, mining 3333/8333, Tor 9001/9030)
+
+- ✅ **Custom Macro Strategy**
+  - All custom macros use `homelab_` prefix to avoid conflicts with Falco's default rules
+  - References Falco's built-in macros (`shell_binaries`, `sensitive_files`, `container`) instead of redefining
+  - `homelab_monitored_namespace` filters all namespaces except kube-system (intentionally broad for initial visibility)
+  - Inline `customRules:` in values.yaml (v8.0.0 doesn't support extraVolumes at root level)
+
+- ✅ **Integration Architecture**
+  - Events will route to Platform API via Falcosidekick (Task #34) → `POST /api/v1/webhooks/falco`
+  - Platform API `/api/v1/compliance/events` endpoint ready for Falco event aggregation
+  - Portal UI Security Events timeline planned (Task #84)
+  - Completes Task #33 — runtime security monitoring deployed
+
 **2026-02-20: CLI Infrastructure Commands**
 
 - ✅ **rdp infra list Command** (`cli/cmd/infra.go`)

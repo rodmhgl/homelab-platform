@@ -19,7 +19,8 @@ AKS Home Lab Internal Developer Platform (IDP) mono-repo.
 | `platform/external-secrets/` | ✅ Phase C — ESO Helm install (v0.11.0) + ClusterSecretStore (Workload Identity, wave 3.5). Platform API ExternalSecret resources deployed. Requires Terraform output placeholders. |
 | `platform/trivy-operator/` | ✅ Phase C — Trivy Operator Helm install (v0.32.0) + values.yaml (wave 7). Continuous CVE scanning with VulnerabilityReport CRDs. |
 | `platform/platform-api/` | ✅ Phase D — Platform API Deployment + Service + RBAC (wave 10). Secrets managed via ESO ExternalSecret (github-pat, openai-api-key, argocd-token). |
-| `platform/` (remaining) | ⬜ Falco, monitoring, kagent, HolmesGPT |
+| `platform/falco/` | ✅ Phase C — Falco Helm install (v8.0.0, wave 8) + 4 custom rules. Modern eBPF driver. Runtime security monitoring for all namespaces except kube-system. |
+| `platform/` (remaining) | ⬜ Falcosidekick, kagent, HolmesGPT |
 | `scaffolds/go-service/` | ✅ Copier template — complete (23 template files: copier.yml, main.go, Dockerfile, k8s/, claims/, CI/CD, Makefile, supporting files) |
 | `scaffolds/python-service/` | ⬜ Copier template (not started) |
 | `api/` | ✅ Platform API (Go + Chi) — scaffold (#51), Argo CD (#42, #43, #89), compliance (#48), infra complete CRUD (#44-#47). Full GitOps infrastructure management (list/get/create/delete) with three-layer validation. Secrets via ESO (#40, #87). RBAC configured. Argo CD integration complete — service account + RBAC via GitOps (values.yaml), token via one-time bootstrap script. |
@@ -155,6 +156,38 @@ Compositions use `function-patch-and-transform` in **Pipeline mode** — not the
 - Storage account names are sanitized by lowercasing only (Azure accepts lowercase alphanumeric)
 
 `ApplicationSet` generator watches `apps/*/config.json` in the platform repo to auto-onboard new scaffold repos.
+
+### Falco — Runtime Security (wave 8)
+
+**Chart version:** falcosecurity/falco 8.0.0 (Falco app version 0.43.0)
+
+**Driver:** Modern eBPF (`modern_ebpf`) — CO-RE (Compile Once, Run Everywhere) with BTF. No kernel module compilation required. Works on AKS Ubuntu nodes (Kernel >= 5.15).
+
+**Custom rules approach:**
+- **Do NOT redefine** macros/lists from Falco's default rules (e.g., `shell_binaries`, `container`, `sensitive_files`)
+- **Always use `homelab_` prefix** for custom macros to avoid naming conflicts
+- Reference Falco's default macros where possible (e.g., `sensitive_files` instead of redefining it)
+- Custom rules are defined **inline** in `values.yaml` via `customRules:` section (NOT separate ConfigMap)
+
+**4 Custom Rules:**
+1. **Unexpected Shell Spawned in Container** (WARNING) — detects shell execution in containers
+2. **Sensitive File Read in Container** (ERROR) — monitors access to /etc/shadow, SSH keys, .kube/config
+3. **Binary Written to Container Filesystem** (WARNING) — container drift detection
+4. **Unexpected Network Connection from Container** (WARNING) — suspicious outbound ports (IRC, mining, Tor)
+
+**Namespace filtering:** Monitors all namespaces **except kube-system**. This is intentionally broad ("start noisy, tune later"). The `homelab_monitored_namespace` macro can be refined later based on actual usage patterns.
+
+**Priority threshold:** `warning` — only WARNING, ERROR, and CRITICAL events are logged. This filters out NOTICE-level default Falco rules (e.g., normal shell usage) to reduce noise.
+
+**gRPC output:** Currently disabled to avoid TLS certificate errors. Will be configured when Falcosidekick (Task #34) is deployed to route events to Platform API webhook.
+
+**Integration points:**
+- Events will route to Platform API via Falcosidekick → `POST /api/v1/webhooks/falco` (Task #49)
+- Platform API `/api/v1/compliance/events` aggregates Falco events (already scaffolded in Task #48)
+
+**Common issues:**
+- **Macro name conflicts:** If custom rules redefine Falco's default macros, the default rules will fail compilation with `LOAD_ERR_COMPILE_CONDITION` errors
+- **Chart version compatibility:** Falco v8.0.0 has different schema than v4.x — `extraVolumes`/`extraVolumeMounts` are NOT supported at root level; use `customRules:` inline instead
 
 ## Platform API (`api/`)
 

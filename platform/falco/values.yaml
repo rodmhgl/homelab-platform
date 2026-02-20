@@ -43,7 +43,7 @@ falco:
 
   ## Priority threshold for alerts (debug, info, notice, warning, error, critical, alert, emergency)
   ## We only want to be notified about warnings and above
-  priority: debug
+  priority: notice
 
   ## Syscall event drops — if Falco can't keep up with syscall rate, it drops events
   syscall_event_drops:
