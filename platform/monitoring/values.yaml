@@ -188,16 +188,11 @@ alertmanager:
 grafana:
   enabled: true
 
-  # Admin credentials — using variable expansion to satisfy security assertion
+  # Admin credentials — from ExternalSecret (synced from Azure Key Vault)
   admin:
-    existingSecret: ""
+    existingSecret: "grafana-admin-creds"
     userKey: admin-user
     passwordKey: admin-password
-
-  # Environment variables for admin credentials
-  env:
-    GF_SECURITY_ADMIN_USER: admin
-    GF_SECURITY_ADMIN_PASSWORD: admin  # CHANGE IN PRODUCTION
 
   # Persistence
   persistence:
@@ -233,43 +228,25 @@ grafana:
           isDefault: true
           editable: false
 
-  # Dashboard providers
-  dashboardProviders:
-    dashboardproviders.yaml:
-      apiVersion: 1
-      providers:
-        - name: 'platform'
-          orgId: 1
-          folder: 'Platform'
-          type: file
-          disableDeletion: false
-          editable: true
-          options:
-            path: /var/lib/grafana/dashboards/platform
+  # Dashboard providers — configured but ConfigMaps will be created in task #37
+  # dashboardProviders:
+  #   dashboardproviders.yaml:
+  #     apiVersion: 1
+  #     providers:
+  #       - name: 'platform'
+  #         orgId: 1
+  #         folder: 'Platform'
+  #         type: file
+  #         disableDeletion: false
+  #         editable: true
+  #         options:
+  #           path: /var/lib/grafana/dashboards/platform
 
-        - name: 'crossplane'
-          orgId: 1
-          folder: 'Crossplane'
-          type: file
-          disableDeletion: false
-          editable: true
-          options:
-            path: /var/lib/grafana/dashboards/crossplane
-
-        - name: 'compliance'
-          orgId: 1
-          folder: 'Compliance'
-          type: file
-          disableDeletion: false
-          editable: true
-          options:
-            path: /var/lib/grafana/dashboards/compliance
-
-  # ConfigMaps with dashboards (will be created separately)
-  dashboardsConfigMaps:
-    platform: "grafana-dashboards-platform"
-    crossplane: "grafana-dashboards-crossplane"
-    compliance: "grafana-dashboards-compliance"
+  # ConfigMaps with dashboards (task #37 - not yet created)
+  # dashboardsConfigMaps:
+  #   platform: "grafana-dashboards-platform"
+  #   crossplane: "grafana-dashboards-crossplane"
+  #   compliance: "grafana-dashboards-compliance"
 
   # Grafana ini configuration
   grafana.ini:

@@ -1,0 +1,33 @@
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: grafana-admin-creds
+  namespace: monitoring
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: bootstrap-keyvault
+    kind: ClusterSecretStore
+
+  target:
+    name: grafana-admin-creds
+    creationPolicy: Owner
+    template:
+      type: Opaque
+      data:
+        admin-user: "{{ .username | b64dec }}"
+        admin-password: "{{ .password | b64dec }}"
+
+  dataFrom:
+    - extract:
+        key: grafana-admin-username
+      rewrite:
+        - regexp:
+            source: "(.*)"
+            target: "username"
+    - extract:
+        key: grafana-admin-password
+      rewrite:
+        - regexp:
+            source: "(.*)"
+            target: "password"

@@ -44,17 +44,40 @@ Self-hosted observability platform for the AKS homelab IDP, providing Prometheus
 
 **Prerequisites:**
 - Argo CD installed (task #6)
-- Namespace: `monitoring` (auto-created)
+- External Secrets Operator installed (task #31)
+- Grafana admin credentials in bootstrap Key Vault (see `externalsecrets/README.md`)
+
+**Setup Grafana Credentials:**
+
+Before deploying, create the required secrets in Azure Key Vault:
+
+```bash
+# Get Key Vault name from Terraform output
+KEYVAULT_NAME=$(cd homelab-platform/infra && terraform output -raw keyvault_name)
+
+# Create Grafana admin username
+az keyvault secret set --vault-name "$KEYVAULT_NAME" --name "grafana-admin-username" --value "admin"
+
+# Create Grafana admin password (generate strong password)
+GRAFANA_PASSWORD=$(openssl rand -base64 32)
+az keyvault secret set --vault-name "$KEYVAULT_NAME" --name "grafana-admin-password" --value "$GRAFANA_PASSWORD"
+echo "Grafana password: $GRAFANA_PASSWORD" > ~/.grafana-admin-password.txt
+chmod 600 ~/.grafana-admin-password.txt
+```
 
 **Install:**
-```bash
-kubectl apply -f homelab-platform/platform/monitoring/application.yaml
-```
+
+Argo CD auto-discovers the monitoring Application via the root App of Apps pattern. No manual apply needed.
+
+**Namespace:** `monitoring` (auto-created)
 
 **Verify:**
 ```bash
 # Check Application sync status
 kubectl get application monitoring -n argocd
+
+# Check ExternalSecret sync (must succeed before Grafana starts)
+kubectl get externalsecret -n monitoring grafana-admin-creds
 
 # Check Prometheus Operator
 kubectl get pods -n monitoring -l app.kubernetes.io/name=prometheus-operator
@@ -65,7 +88,7 @@ kubectl get prometheus -n monitoring
 # Check Alertmanager instance
 kubectl get alertmanager -n monitoring
 
-# Check Grafana
+# Check Grafana (depends on grafana-admin-creds Secret)
 kubectl get pods -n monitoring -l app.kubernetes.io/name=grafana
 ```
 
@@ -87,8 +110,15 @@ kubectl port-forward -n monitoring svc/monitoring-alertmanager 9093:9093
 ```bash
 kubectl port-forward -n monitoring svc/monitoring-grafana 3000:80
 # Open http://localhost:3000
-# Username: admin
-# Password: admin (see values.yaml)
+
+# Get credentials from Secret (synced from Key Vault)
+kubectl get secret -n monitoring grafana-admin-creds -o jsonpath='{.data.admin-user}' | base64 -d
+echo ""
+kubectl get secret -n monitoring grafana-admin-creds -o jsonpath='{.data.admin-password}' | base64 -d
+echo ""
+
+# Or retrieve from the saved file (if you followed setup instructions)
+cat ~/.grafana-admin-password.txt
 ```
 
 ## ServiceMonitor Pattern
@@ -323,8 +353,9 @@ kubectl get pvc -n monitoring
 - Allow Alertmanager → HolmesGPT (webhooks)
 
 **Secrets:**
-- Grafana admin password: stored in Secret `monitoring-grafana` (key: `admin-password`)
-- Change default password in values.yaml before production deployment
+- Grafana admin credentials: synced from Azure Key Vault via ESO → Secret `grafana-admin-creds`
+- Zero hardcoded credentials — all secrets managed via ExternalSecrets
+- See `externalsecrets/README.md` for credential rotation and troubleshooting
 
 ## Retention and Cost
 
