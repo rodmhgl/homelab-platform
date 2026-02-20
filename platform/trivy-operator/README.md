@@ -234,7 +234,7 @@ serviceMonitor:
 
 ## Upgrade Path
 
-Current: `0.27.1` (pinned for stability)
+Current: `0.32.0` (latest as of February 2026)
 
 To upgrade:
 1. Update `targetRevision` in `application.yaml`

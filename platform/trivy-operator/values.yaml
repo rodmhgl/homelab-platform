@@ -1,6 +1,6 @@
 ## Trivy Operator Helm values for homelab IDP
 ## Chart: aquasecurity/trivy-operator
-## Version: 0.27.x
+## Version: 0.32.x
 ##
 ## Trivy Operator installs into trivy-system. It watches all workloads cluster-wide
 ## and generates VulnerabilityReport CRDs for each container image it discovers.
