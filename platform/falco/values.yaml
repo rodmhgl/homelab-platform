@@ -63,15 +63,15 @@ falco:
   program_output:
     enabled: false
 
-  ## gRPC output (used by Falcosidekick to receive events)
+  ## gRPC server (deprecated - will be configured later for Falcosidekick)
+  ## For now, disabled to avoid TLS certificate errors
+  ## Falcosidekick (Task #34) will use the unix socket or http_output instead
   grpc:
-    enabled: true
-    bind_address: "0.0.0.0:5060"
-    threadiness: 0
+    enabled: false
 
-  ## gRPC output for event streaming (Falcosidekick connects here)
+  ## gRPC output (deprecated - disabled for now)
   grpc_output:
-    enabled: true
+    enabled: false
 
 ## Resource limits for Falco pods
 resources:
