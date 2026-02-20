@@ -22,7 +22,7 @@ AKS Home Lab Internal Developer Platform (IDP) mono-repo.
 | `platform/` (remaining) | ⬜ Falco, monitoring, kagent, HolmesGPT |
 | `scaffolds/go-service/` | ✅ Copier template — complete (23 template files: copier.yml, main.go, Dockerfile, k8s/, claims/, CI/CD, Makefile, supporting files) |
 | `scaffolds/python-service/` | ⬜ Copier template (not started) |
-| `api/` | ✅ Platform API (Go + Chi) — scaffold endpoint (#51), Argo CD endpoints (#42, #43), compliance endpoints (#48), infra list (#44) & query (#45) endpoints. Secrets via ESO (#40, #87). RBAC configured for `platform.example.com` API group. |
+| `api/` | ✅ Platform API (Go + Chi) — scaffold (#51), Argo CD (#42, #43), compliance (#48), infra list/query/create (#44, #45, #46). GitOps Claim creation with three-layer validation. Secrets via ESO (#40, #87). RBAC configured. |
 | `cli/` | 🔨 rdp CLI (Go + Cobra) — Cobra root command + Viper config management complete |
 
 ## Terraform (`infra/`)
@@ -142,12 +142,13 @@ Compositions use `function-patch-and-transform` in **Pipeline mode** — not the
 
 ## Platform API (`api/`)
 
-**Status:** Core endpoints implemented (scaffold, apps, compliance, infra query)
+**Status:** Core endpoints implemented (scaffold, apps, compliance, infra management)
 
 - **Language:** Go
 - **Router:** Chi
 - **Logging:** Structured logging with `slog`
 - **Configuration:** Environment variables via `envconfig`
+- **GitOps:** Infrastructure Claims committed to Git, not directly to cluster
 
 **Implemented endpoints:**
 
@@ -155,12 +156,12 @@ Compositions use `function-patch-and-transform` in **Pipeline mode** — not the
 - `POST /api/v1/scaffold` — ✅ (#51) Copier template execution, GitHub repo creation, Argo CD onboarding
 - `GET /api/v1/apps`, `GET /api/v1/apps/{name}`, `POST /api/v1/apps/{name}/sync` — ✅ (#42, #43) Argo CD app management
 - `GET /api/v1/compliance/*` — ✅ (#48) Aggregated compliance view (Gatekeeper + Trivy)
+- `GET /api/v1/infra`, `GET /api/v1/infra/storage`, `GET /api/v1/infra/vaults` — ✅ (#44) List Claims
 - `GET /api/v1/infra/{kind}/{name}` — ✅ (#45) Crossplane resource tree query with events
+- `POST /api/v1/infra` — ✅ (#46) Create Claim via GitOps (three-layer validation: request → Gatekeeper → GitHub)
 
 **Pending endpoints:**
 
-- `GET /api/v1/infra`, `GET /api/v1/infra/storage`, `GET /api/v1/infra/vaults` — List Claims (#44)
-- `POST /api/v1/infra` — Create Claim (commits YAML to Git) (#46)
 - `DELETE /api/v1/infra/{kind}/{name}` — Delete Claim (#47)
 - `/api/v1/secrets/*` — ExternalSecrets + connection secrets (#50)
 - `/api/v1/investigate/*` — HolmesGPT integration (#52)

@@ -6,6 +6,21 @@ All notable changes to the homelab-platform project.
 
 ### Added
 
+**2026-02-20: Infrastructure Create Endpoint (GitOps)**
+
+- ✅ **Infrastructure Create API** (`POST /api/v1/infra`)
+  - GitOps-based Claim creation — commits YAML to app repo via GitHub API, not directly to cluster
+  - New files: `github.go` (GitHub API client), `validation.go` (three-layer validation), `templates.go` (YAML generation)
+  - Three-layer validation: Request structure → Gatekeeper constraints → GitHub API
+  - Mirrors Gatekeeper constraints client-side: location (southcentralus, eastus2), no publicAccess: true
+  - Smart defaults: location: southcentralus, tier: Standard, redundancy: LRS, skuName: standard, retention: 7 days
+  - Go text/template YAML generation with automatic Gatekeeper-required label injection
+  - Comprehensive test suite: `validation_test.go` (4 test functions, 27 test cases, 100% pass rate)
+  - Live testing: 7/7 tests passed with real GitHub commits (see `api/TEST_RESULTS.md`)
+  - Documentation: `api/docs/infra-create-endpoint.md`, `api/examples/create-claim.sh`
+  - Completes task #46 — **unblocks Act 5 demo** (Self-Service Infrastructure)
+  - **Unblocks downstream tasks:** #69 (rdp infra create storage), #70 (rdp infra create vault), #68 (rdp infra list CLI)
+
 **2026-02-20: Infrastructure List Endpoints**
 
 - ✅ **Infrastructure List API** (`GET /api/v1/infra`, `GET /api/v1/infra/storage`, `GET /api/v1/infra/vaults`)

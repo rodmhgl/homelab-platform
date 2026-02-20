@@ -108,7 +108,7 @@ All configuration is via environment variables:
 - `GET /api/v1/infra/storage` — ✅ List StorageBucket Claims
 - `GET /api/v1/infra/vaults` — ✅ List Vault Claims
 - `GET /api/v1/infra/{kind}/{name}` — ✅ Get Claim details + composed resource tree + events (supports ?namespace=)
-- `POST /api/v1/infra` — ⬜ Create Claim (commits YAML to app repo)
+- `POST /api/v1/infra` — ✅ Create Claim (commits YAML to app repo via GitOps)
 - `DELETE /api/v1/infra/{kind}/{name}` — ⬜ Delete Claim (commits removal to app repo)
 
 ### Compliance
@@ -181,24 +181,32 @@ Project scaffolding — runs Copier templates, creates GitHub repos, onboards to
 
 ### `internal/infra/`
 
-Infrastructure management endpoints — queries Crossplane Claims, Composites, and Managed Resources to provide full resource tree visibility.
+Infrastructure management endpoints — queries and creates Crossplane Claims via GitOps, providing full resource tree visibility.
 
 **Files:**
-- `handler.go` — HTTP handlers for list and detail queries
+- `handler.go` — HTTP handlers for list, detail, and create operations
 - `client.go` — Kubernetes dynamic client wrapper with GVR mappings
+- `github.go` — GitHub API client for GitOps commits
+- `validation.go` — Request validation and Gatekeeper constraint pre-validation
+- `templates.go` — YAML generation for StorageBucket and Vault Claims
 - `types.go` — Request/response DTOs
+- `validation_test.go` — Comprehensive test suite (27 test cases)
 - `README.md` — Full package documentation
 
 **Key Features:**
 - Lists all Claims across namespaces (GET /api/v1/infra, /infra/storage, /infra/vaults)
 - Traverses complete Crossplane resource tree: Claim → Composite → Managed Resources
 - Retrieves Kubernetes Events for all resources in the tree (essential for debugging provisioning failures)
+- **GitOps Claim creation** — POST /api/v1/infra commits YAML to app repos, not directly to cluster
+- **Three-layer validation** — Request structure → Gatekeeper constraints → GitHub API
+- **Smart defaults** — location: southcentralus, tier: Standard, redundancy: LRS, skuName: standard
+- **Template-based YAML generation** — Go text/template with automatic label injection
 - Supports Claims in any namespace via `?namespace=` query parameter
 - Determines resource status from Crossplane conditions (Ready, Synced)
 - Returns Azure resource names via `externalName` field
 - Lightweight `ClaimSummary` for list views, full `ClaimResource` for detail views
 
-See `internal/infra/README.md` for detailed documentation.
+See `internal/infra/README.md` and `docs/infra-create-endpoint.md` for detailed documentation.
 
 ## Development
 
