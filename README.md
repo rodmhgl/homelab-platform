@@ -23,7 +23,7 @@ AKS Home Lab Internal Developer Platform (IDP) mono-repo.
 | `platform/holmesgpt/` | ⬜ Pending | AI-powered root cause analysis |
 | `scaffolds/go-service/` | ✅ Complete | Copier template — 23 production-ready template files (copier.yml, main.go, Dockerfile, k8s/ manifests, Crossplane Claims, CI/CD pipeline, Makefile, golangci-lint, Dependabot, CODEOWNERS). Generates Gatekeeper-compliant apps with optional Azure infrastructure. |
 | `scaffolds/python-service/` | ⬜ Pending | Copier template (not started) |
-| `api/` | ✅ Complete | Platform API — Go + Chi router, structured logging, graceful shutdown. Endpoints: scaffold (task #51), Argo CD apps (tasks #42, #43), compliance aggregation (task #48). Secrets via ESO. |
+| `api/` | ✅ Complete | Platform API — Go + Chi router, structured logging, graceful shutdown. Endpoints: scaffold (#51), Argo CD apps (#42, #43), compliance aggregation (#48), infrastructure query (#45). RBAC configured for `platform.example.com` API group. Secrets via ESO. |
 | `cli/` | 🔨 In Progress | `rdp` CLI — Cobra root command + Viper config management complete |
 
 ## Bootstrap
