@@ -21,8 +21,8 @@ spec:
 
   dataFrom:
     - extract:
-        conversionStrategy: Default	
-        decodingStrategy: None	
+        conversionStrategy: Default
+        decodingStrategy: None
         key: grafana-admin-username
         metadataPolicy: None
       rewrite:
@@ -30,8 +30,8 @@ spec:
             source: "(.*)"
             target: "username"
     - extract:
-        conversionStrategy: Default	
-        decodingStrategy: None	
+        conversionStrategy: Default
+        decodingStrategy: None
         key: grafana-admin-password
         metadataPolicy: None
       rewrite:
