@@ -146,6 +146,43 @@ curl -X POST http://platform-api.platform.svc.cluster.local:8080/api/v1/scaffold
 
 ## Troubleshooting
 
+### Argo CD shows ExternalSecret as OutOfSync (even when healthy)
+
+**Symptoms:**
+```bash
+$ kubectl get application platform-api -n argocd
+NAME           SYNC STATUS   HEALTH STATUS
+platform-api   OutOfSync     Healthy
+```
+
+**Cause:**
+External Secrets Operator adds default values to ExternalSecret resources:
+- `spec.data[*].remoteRef.conversionStrategy: Default`
+- `spec.data[*].remoteRef.decodingStrategy: None`
+- `spec.data[*].remoteRef.metadataPolicy: None`
+- `spec.target.template.engineVersion: v2`
+- `spec.target.template.mergePolicy: Replace`
+
+When these fields aren't in the source YAML, Argo CD sees the live manifest (with defaults) as different from the desired manifest (without defaults), causing perpetual drift.
+
+**Solution:**
+The `application.yaml` includes `ignoreDifferences` configuration to ignore these ESO-added fields:
+
+```yaml
+ignoreDifferences:
+  - group: external-secrets.io
+    kind: ExternalSecret
+    jsonPointers:
+      - /spec/data/*/remoteRef/conversionStrategy
+      - /spec/data/*/remoteRef/decodingStrategy
+      - /spec/data/*/remoteRef/metadataPolicy
+      - /spec/target/template/engineVersion
+      - /spec/target/template/mergePolicy
+      - /status
+```
+
+After committing this configuration, Argo CD will ignore these fields and show Synced status.
+
 ### ExternalSecret stuck in SecretSyncedError
 
 **Symptoms:**

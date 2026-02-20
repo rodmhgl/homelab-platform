@@ -36,9 +36,20 @@ spec:
         factor: 2
         maxDuration: 3m
 
-  # Health assessment
+  # Health assessment and diff management
   ignoreDifferences:
     - group: apps
       kind: Deployment
       jsonPointers:
         - /spec/replicas  # Ignore HPA-managed replica count
+
+    # External Secrets Operator adds default fields that cause sync drift
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jsonPointers:
+        - /spec/data/*/remoteRef/conversionStrategy  # ESO default: "Default"
+        - /spec/data/*/remoteRef/decodingStrategy    # ESO default: "None"
+        - /spec/data/*/remoteRef/metadataPolicy      # ESO default: "None"
+        - /spec/target/template/engineVersion        # ESO default: "v2"
+        - /spec/target/template/mergePolicy          # ESO default: "Replace"
+        - /status                                    # Status is always managed by controller

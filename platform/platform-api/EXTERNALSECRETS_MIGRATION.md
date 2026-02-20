@@ -69,6 +69,12 @@ spec:
    - Removed `checksum/secret` annotation (ESO handles secret updates)
    - Deployment still uses `envFrom.secretRef` (no change to pod spec)
 
+5. **Updated `application.yaml`:**
+   - Added `ignoreDifferences` for ExternalSecret resources
+   - ESO adds default fields (`conversionStrategy`, `decodingStrategy`, `metadataPolicy`, `engineVersion`, `mergePolicy`)
+   - Without ignore config, Argo CD shows perpetual OutOfSync status even though resource is healthy
+   - This is a common pattern with operators that set CRD defaults
+
 ## Required Actions (Operator Checklist)
 
 Before the Platform API will work with ExternalSecrets, you must provision the secrets in Azure Key Vault:
