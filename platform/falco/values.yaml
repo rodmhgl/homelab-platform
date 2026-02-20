@@ -1,47 +1,37 @@
 ## Falco Helm values for homelab IDP
 ## Chart: falcosecurity/falco
-## Version: 4.23.x
+## Version: 8.0.x
 ##
 ## Falco installs as a DaemonSet (one pod per node) and monitors syscalls via eBPF or
 ## kernel module to detect suspicious runtime behavior.
 ##
 ## Driver modes:
-## - eBPF (modern_ebpf): Recommended for Kernel >= 5.8, no kernel module needed
-## - Kernel Module (kmod): Traditional approach, requires kernel headers
-## - Modern BPF (default for this version): CO-RE eBPF with BTF, most portable
+## - modern_ebpf: Modern eBPF probe with CO-RE (Compile Once, Run Everywhere)
+## - ebpf: Traditional eBPF probe
+## - kmod: Kernel module (requires kernel headers)
+## - auto: Auto-detect best driver
 ##
 ## For AKS with Ubuntu nodes (Kernel >= 5.15), modern_ebpf is the best choice.
 
 ## Driver configuration
 driver:
-  ## eBPF driver is preferred over kernel module (no kernel headers needed)
+  ## Enable driver (required for syscall monitoring)
+  enabled: true
+
+  ## Driver kind: modern_ebpf is preferred for AKS Ubuntu nodes
   kind: modern_ebpf
 
-  ## Loader configuration (downloads/compiles driver if needed)
-  loader:
-    enabled: true
-    initContainer:
-      enabled: true
-      image:
-        repository: falcosecurity/falco-driver-loader
-        tag: 0.40.1
-      resources:
-        limits:
-          cpu: 500m
-          memory: 512Mi
-        requests:
-          cpu: 100m
-          memory: 128Mi
+  ## kmod configuration (not used with modern_ebpf, but included for completeness)
+  kmod:
+    bufSizePreset: 4
+    dropFailedExit: false
 
 ## Falco configuration
+## Note: In v8.0.0, many of these settings moved to falco.yaml config file
+## The chart manages the config file generation automatically
 falco:
-  ## Load default rules + custom rules
-  ## Default rules cover: shells in containers, file modifications, network anomalies, etc.
-  rules_file:
-    - /etc/falco/falco_rules.yaml
-    - /etc/falco/falco_rules.local.yaml
-    - /etc/falco/k8s_audit_rules.yaml
-    - /etc/falco/rules.d  # Custom rules directory
+  ## Watch config files for changes (hot reload)
+  watch_config_files: true
 
   ## JSON output for easier parsing by Falcosidekick
   json_output: true
@@ -56,7 +46,6 @@ falco:
   priority: warning
 
   ## Syscall event drops — if Falco can't keep up with syscall rate, it drops events
-  ## Log a warning if more than 1% of events are dropped
   syscall_event_drops:
     threshold: 0.01
     actions:
@@ -103,34 +92,27 @@ serviceAccount:
   create: true
   name: falco
 
-## Security context (Falco needs privileged access to monitor syscalls)
-## This is expected and required for runtime security monitoring
-podSecurityContext:
-  runAsNonRoot: false
-  runAsUser: 0
+## Security context
+## Note: In v8.0.0, security context is auto-configured based on driver.kind
+## For modern_ebpf, the chart automatically sets privileged: true
+## We rely on the chart's automatic configuration
+podSecurityContext: {}
 
 ## Container security context
-## Falco requires privileged mode to load eBPF programs and access /sys/kernel
-containerSecurityContext:
-  privileged: true
-  allowPrivilegeEscalation: true
-  readOnlyRootFilesystem: true
-  capabilities:
-    add:
-      - SYS_ADMIN  # Required for eBPF
-      - SYS_RESOURCE
-      - SYS_PTRACE  # Required for process inspection
+## Auto-configured by the chart based on driver.kind
+## For modern_ebpf: privileged: true is set automatically
+containerSecurityContext: {}
 
-## Custom rules — mounted as ConfigMap
-## See custom-rules.yaml for rule definitions
-customRules:
-  ## ConfigMap name containing custom rules
-  ## This ConfigMap is created by Argo CD from custom-rules.yaml
-  rules-homelab.yaml: |-
-    # Custom rules are defined in custom-rules.yaml and mounted here
-    # The actual rule content is managed separately for easier updates
+## Custom rules — loaded via customRules
+## In v8.0.0, custom rules are defined inline and mounted automatically by the chart
+## The chart creates a ConfigMap and mounts it into /etc/falco/rules.d/
+## We'll load our custom rules from the separate ConfigMap created by Argo CD
+customRules: {}
+  # We use a separate ConfigMap (falco-custom-rules) managed by Argo CD
+  # and mount it via extraVolumes/extraVolumeMounts below
 
 ## Extra volumes for custom rules
+## Mount the ConfigMap created by Argo CD from custom-rules.yaml
 extraVolumes:
   - name: custom-rules
     configMap:

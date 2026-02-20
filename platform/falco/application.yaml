@@ -55,7 +55,7 @@ spec:
         valueFiles:
           - $values/platform/falco/values.yaml
       repoURL: https://falcosecurity.github.io/charts
-      targetRevision: "4.23.0"
+      targetRevision: "8.0.0"
 
     ## Platform repo — values.yaml + custom-rules.yaml
     - path: platform/falco
