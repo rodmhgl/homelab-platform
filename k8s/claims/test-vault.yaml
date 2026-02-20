@@ -1,0 +1,25 @@
+apiVersion: platform.example.com/v1alpha1
+kind: Vault
+metadata:
+  name: test-vault
+  namespace: default
+  labels:
+    app.kubernetes.io/component: infrastructure
+    app.kubernetes.io/instance: test-vault
+    app.kubernetes.io/managed-by: crossplane
+    app.kubernetes.io/name: homelab-platform
+    app.kubernetes.io/part-of: homelab-platform
+    app.kubernetes.io/version: 1.0.0
+spec:
+  parameters:
+    location: eastus2
+    skuName: premium
+    publicAccess: false  # Enforced by Gatekeeper CrossplaneNoPublicAccess constraint
+    softDeleteRetentionDays: 30
+  writeConnectionSecretToRef:
+    name: test-vault
+    namespace: default
+  compositionSelector:
+    matchLabels:
+      provider: azure
+      type: keyvault
