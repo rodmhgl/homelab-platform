@@ -22,7 +22,7 @@ AKS Home Lab Internal Developer Platform (IDP) mono-repo.
 | `platform/` (remaining) | ⬜ Falco, monitoring, kagent, HolmesGPT |
 | `scaffolds/go-service/` | ✅ Copier template — complete (23 template files: copier.yml, main.go, Dockerfile, k8s/, claims/, CI/CD, Makefile, supporting files) |
 | `scaffolds/python-service/` | ⬜ Copier template (not started) |
-| `api/` | ✅ Platform API (Go + Chi) — scaffold endpoint (task #51), Argo CD endpoints (tasks #42, #43), compliance endpoints (task #48). Secrets via ESO (tasks #40, #87). |
+| `api/` | ✅ Platform API (Go + Chi) — scaffold endpoint (#51), Argo CD endpoints (#42, #43), compliance endpoints (#48), infra query endpoint (#45). Secrets via ESO (#40, #87). RBAC configured for `platform.example.com` API group. |
 | `cli/` | 🔨 rdp CLI (Go + Cobra) — Cobra root command + Viper config management complete |
 
 ## Terraform (`infra/`)
@@ -133,11 +133,16 @@ crossplane-config   (wave 3) — ProviderConfig + XRDs + Compositions; SkipDryRu
 
 Compositions use `function-patch-and-transform` in **Pipeline mode** — not the legacy `resources` mode.
 
+**Composition transform syntax:**
+- String transforms must include `type: FromConnectionSecretKey` for connection details
+- For string sanitization, use `type: Convert` with `convert: ToLower` (avoid complex Regexp transforms)
+- Storage account names are sanitized by lowercasing only (Azure accepts lowercase alphanumeric)
+
 `ApplicationSet` generator watches `apps/*/config.json` in the platform repo to auto-onboard new scaffold repos.
 
 ## Platform API (`api/`)
 
-**Status:** Foundation complete, scaffold endpoint implemented (task #51)
+**Status:** Core endpoints implemented (scaffold, apps, compliance, infra query)
 
 - **Language:** Go
 - **Router:** Chi
@@ -147,22 +152,20 @@ Compositions use `function-patch-and-transform` in **Pipeline mode** — not the
 **Implemented endpoints:**
 
 - `GET /health`, `GET /ready` — Health checks
-- `POST /api/v1/scaffold` — ✅ Implemented (task #51)
-  - Runs Copier to generate project from template
-  - Creates GitHub repository
-  - Initializes git, commits, and pushes to new repo
-  - Commits `apps/<name>/config.json` to platform repo for Argo CD discovery
-  - See `api/internal/scaffold/README.md` for full documentation
+- `POST /api/v1/scaffold` — ✅ (#51) Copier template execution, GitHub repo creation, Argo CD onboarding
+- `GET /api/v1/apps`, `GET /api/v1/apps/{name}`, `POST /api/v1/apps/{name}/sync` — ✅ (#42, #43) Argo CD app management
+- `GET /api/v1/compliance/*` — ✅ (#48) Aggregated compliance view (Gatekeeper + Trivy)
+- `GET /api/v1/infra/{kind}/{name}` — ✅ (#45) Crossplane resource tree query with events
 
 **Pending endpoints:**
 
-- `/api/v1/apps/*` — Argo CD application management
-- `/api/v1/infra/*` — Crossplane Claim management (commits YAML to Git, not direct cluster mutations)
-- `/api/v1/compliance/*` — Gatekeeper + Trivy + Falco aggregation
-- `/api/v1/secrets/*` — ExternalSecrets + connection secrets
-- `/api/v1/investigate/*` — HolmesGPT integration
-- `/api/v1/agent/ask` — kagent CRD-based interaction
-- `/api/v1/webhooks/*` — Falco and Argo CD webhooks
+- `GET /api/v1/infra`, `GET /api/v1/infra/storage`, `GET /api/v1/infra/vaults` — List Claims (#44)
+- `POST /api/v1/infra` — Create Claim (commits YAML to Git) (#46)
+- `DELETE /api/v1/infra/{kind}/{name}` — Delete Claim (#47)
+- `/api/v1/secrets/*` — ExternalSecrets + connection secrets (#50)
+- `/api/v1/investigate/*` — HolmesGPT integration (#52)
+- `/api/v1/agent/ask` — kagent CRD-based interaction (#53)
+- `/api/v1/webhooks/*` — Falco and Argo CD webhooks (#49)
 
 **Key architectural patterns:**
 
