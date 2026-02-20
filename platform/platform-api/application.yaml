@@ -47,9 +47,9 @@ spec:
     - group: external-secrets.io
       kind: ExternalSecret
       jsonPointers:
-        - /spec/data/*/remoteRef/conversionStrategy  # ESO default: "Default"
-        - /spec/data/*/remoteRef/decodingStrategy    # ESO default: "None"
-        - /spec/data/*/remoteRef/metadataPolicy      # ESO default: "None"
+        - /spec/data[]/remoteRef/conversionStrategy  # ESO default: "Default"
+        - /spec/data[]/remoteRef/decodingStrategy    # ESO default: "None"
+        - /spec/data[]/remoteRef/metadataPolicy      # ESO default: "None"
         - /spec/target/template/engineVersion        # ESO default: "v2"
         - /spec/target/template/mergePolicy          # ESO default: "Replace"
         - /status                                    # Status is always managed by controller
