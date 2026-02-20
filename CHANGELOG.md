@@ -6,6 +6,16 @@ All notable changes to the homelab-platform project.
 
 ### Added
 
+**2026-02-20: Infrastructure List Endpoints**
+
+- ✅ **Infrastructure List API** (`GET /api/v1/infra`, `GET /api/v1/infra/storage`, `GET /api/v1/infra/vaults`)
+  - New client methods: `ListClaims()` and `ListAllClaims()` using Kubernetes dynamic client
+  - Three new handler methods: `HandleListAllClaims`, `HandleListStorageClaims`, `HandleListVaultClaims`
+  - New response type: `ListClaimsResponse` with `ClaimSummary` for lightweight list views
+  - Lists Claims across all namespaces using client-go `List()` operations
+  - Returns status, ready/synced conditions, connection secret name, and labels
+  - Completes task #44 — all infrastructure list endpoints now functional
+
 **2026-02-20: Infrastructure Query Endpoint & Crossplane Composition Fixes**
 
 - ✅ **Infrastructure Query API** (`GET /api/v1/infra/{kind}/{name}`)
@@ -73,6 +83,7 @@ All notable changes to the homelab-platform project.
 - ✅ Argo CD Apps (`GET /api/v1/apps`, `GET /api/v1/apps/{name}`, `POST /api/v1/apps/{name}/sync`)
 - ✅ Compliance (`GET /api/v1/compliance/summary|policies|violations|vulnerabilities`)
 - ✅ Infrastructure Query (`GET /api/v1/infra/{kind}/{name}`)
+- ✅ Infrastructure List (`GET /api/v1/infra`, `GET /api/v1/infra/storage`, `GET /api/v1/infra/vaults`)
 
 **Scaffolds:**
 - ✅ go-service (23 production-ready template files)
@@ -88,7 +99,6 @@ All notable changes to the homelab-platform project.
 - ⬜ HolmesGPT
 
 **Platform API Endpoints:**
-- ⬜ Infrastructure List (`GET /api/v1/infra`, `GET /api/v1/infra/storage`, `GET /api/v1/infra/vaults`)
 - ⬜ Infrastructure Create/Delete (`POST /api/v1/infra`, `DELETE /api/v1/infra/{kind}/{name}`)
 - ⬜ Secrets (`GET /api/v1/secrets/{namespace}`)
 - ⬜ Investigation (`POST /api/v1/investigate`, `GET /api/v1/investigate/{id}`)
@@ -153,4 +163,8 @@ Infrastructure mutation endpoints (create/delete) will:
 
 **Immediate Priority:** Task #46 — `POST /api/v1/infra` (Create Claim via GitOps)
 
-This will complete the infrastructure provisioning story by enabling developers to create Claims through the API, which commits them to Git for Argo CD to sync.
+This will complete the core infrastructure provisioning story by enabling developers to create Claims through the API, which commits them to Git for Argo CD to sync. With the list endpoints now complete, developers can:
+1. List all Claims (`GET /api/v1/infra`)
+2. View detailed Claim status (`GET /api/v1/infra/{kind}/{name}`)
+3. *(Next)* Create new Claims via GitOps (`POST /api/v1/infra`)
+4. *(Future)* Delete Claims via GitOps (`DELETE /api/v1/infra/{kind}/{name}`)

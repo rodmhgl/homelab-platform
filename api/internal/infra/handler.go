@@ -135,6 +135,111 @@ func (h *Handler) HandleGetResource(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// HandleListAllClaims handles GET /api/v1/infra
+// Returns all Crossplane Claims (StorageBucket + Vault) across all namespaces
+func (h *Handler) HandleListAllClaims(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	slog.Info("Listing all infrastructure Claims")
+
+	// Get all Claims
+	claims, err := h.client.ListAllClaims(ctx)
+	if err != nil {
+		slog.Error("Failed to list all claims", "error", err)
+		http.Error(w, fmt.Sprintf(`{"error":"failed to list claims: %s"}`, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	// Convert to summary format
+	summaries := make([]ClaimSummary, 0, len(claims))
+	for _, claim := range claims {
+		summaries = append(summaries, parseClaimSummary(&claim))
+	}
+
+	response := ListClaimsResponse{
+		Claims: summaries,
+		Total:  len(summaries),
+	}
+
+	slog.Info("All Claims listed successfully", "total", response.Total)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		slog.Error("Failed to encode response", "error", err)
+	}
+}
+
+// HandleListStorageClaims handles GET /api/v1/infra/storage
+// Returns all StorageBucket Claims across all namespaces
+func (h *Handler) HandleListStorageClaims(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	slog.Info("Listing StorageBucket Claims")
+
+	// Get StorageBucket Claims
+	claimList, err := h.client.ListClaims(ctx, "StorageBucket")
+	if err != nil {
+		slog.Error("Failed to list StorageBucket claims", "error", err)
+		http.Error(w, fmt.Sprintf(`{"error":"failed to list storage claims: %s"}`, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	// Convert to summary format
+	summaries := make([]ClaimSummary, 0, len(claimList.Items))
+	for i := range claimList.Items {
+		summaries = append(summaries, parseClaimSummary(&claimList.Items[i]))
+	}
+
+	response := ListClaimsResponse{
+		Claims: summaries,
+		Total:  len(summaries),
+	}
+
+	slog.Info("StorageBucket Claims listed successfully", "total", response.Total)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		slog.Error("Failed to encode response", "error", err)
+	}
+}
+
+// HandleListVaultClaims handles GET /api/v1/infra/vaults
+// Returns all Vault Claims across all namespaces
+func (h *Handler) HandleListVaultClaims(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	slog.Info("Listing Vault Claims")
+
+	// Get Vault Claims
+	claimList, err := h.client.ListClaims(ctx, "Vault")
+	if err != nil {
+		slog.Error("Failed to list Vault claims", "error", err)
+		http.Error(w, fmt.Sprintf(`{"error":"failed to list vault claims: %s"}`, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	// Convert to summary format
+	summaries := make([]ClaimSummary, 0, len(claimList.Items))
+	for i := range claimList.Items {
+		summaries = append(summaries, parseClaimSummary(&claimList.Items[i]))
+	}
+
+	response := ListClaimsResponse{
+		Claims: summaries,
+		Total:  len(summaries),
+	}
+
+	slog.Info("Vault Claims listed successfully", "total", response.Total)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		slog.Error("Failed to encode response", "error", err)
+	}
+}
+
 // Helper functions
 
 // normalizeKind normalizes URL kind parameter to proper Claim kind
@@ -176,6 +281,27 @@ func parseClaimResource(obj *unstructured.Unstructured) ClaimResource {
 		ConnectionSecret:  connectionSecret,
 		CreationTimestamp: obj.GetCreationTimestamp().Time,
 		ResourceRef:       resourceRef,
+	}
+}
+
+// parseClaimSummary converts unstructured Claim to ClaimSummary (lightweight)
+func parseClaimSummary(obj *unstructured.Unstructured) ClaimSummary {
+	ready, synced := extractConditionStatus(obj)
+	status := determineStatus(ready, synced)
+
+	// Extract connection secret name
+	connectionSecret, _, _ := unstructured.NestedString(obj.Object, "spec", "writeConnectionSecretToRef", "name")
+
+	return ClaimSummary{
+		Name:              obj.GetName(),
+		Namespace:         obj.GetNamespace(),
+		Kind:              obj.GetKind(),
+		Status:            status,
+		Synced:            synced,
+		Ready:             ready,
+		ConnectionSecret:  connectionSecret,
+		CreationTimestamp: obj.GetCreationTimestamp().Time,
+		Labels:            obj.GetLabels(),
 	}
 }
 

@@ -192,10 +192,10 @@ func setupRouter(scaffoldHandler *scaffold.Handler, argocdHandler *argocd.Handle
 
 		// Infrastructure endpoints
 		r.Route("/infra", func(r chi.Router) {
-			r.Get("/", notImplementedHandler("GET /api/v1/infra"))
+			r.Get("/", infraHandler.HandleListAllClaims)
 			r.Post("/", notImplementedHandler("POST /api/v1/infra"))
-			r.Get("/storage", notImplementedHandler("GET /api/v1/infra/storage"))
-			r.Get("/vaults", notImplementedHandler("GET /api/v1/infra/vaults"))
+			r.Get("/storage", infraHandler.HandleListStorageClaims)
+			r.Get("/vaults", infraHandler.HandleListVaultClaims)
 			r.Route("/{kind}/{name}", func(r chi.Router) {
 				r.Get("/", infraHandler.HandleGetResource)
 				r.Delete("/", notImplementedHandler("DELETE /api/v1/infra/{kind}/{name}"))

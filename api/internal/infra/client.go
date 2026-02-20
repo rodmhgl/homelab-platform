@@ -335,3 +335,43 @@ func determineStatus(ready, synced bool) string {
 	}
 	return "Progressing"
 }
+
+// ListClaims retrieves all Claims of a specific kind across all namespaces
+func (c *Client) ListClaims(ctx context.Context, kind string) (*unstructured.UnstructuredList, error) {
+	gvr, err := claimKindToGVR(kind)
+	if err != nil {
+		return nil, err
+	}
+
+	slog.Debug("Listing claims", "kind", kind, "gvr", gvr.String())
+
+	claims, err := c.dynamicClient.Resource(gvr).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list claims of kind %s: %w", kind, err)
+	}
+
+	return claims, nil
+}
+
+// ListAllClaims retrieves all Claims (StorageBucket + Vault) across all namespaces
+func (c *Client) ListAllClaims(ctx context.Context) ([]unstructured.Unstructured, error) {
+	var allClaims []unstructured.Unstructured
+
+	// List StorageBucket Claims
+	storageClaims, err := c.ListClaims(ctx, "StorageBucket")
+	if err != nil {
+		slog.Warn("Failed to list StorageBucket claims", "error", err)
+	} else {
+		allClaims = append(allClaims, storageClaims.Items...)
+	}
+
+	// List Vault Claims
+	vaultClaims, err := c.ListClaims(ctx, "Vault")
+	if err != nil {
+		slog.Warn("Failed to list Vault claims", "error", err)
+	} else {
+		allClaims = append(allClaims, vaultClaims.Items...)
+	}
+
+	return allClaims, nil
+}

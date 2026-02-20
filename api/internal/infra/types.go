@@ -10,6 +10,25 @@ type GetResourceResponse struct {
 	Events    []KubernetesEvent   `json:"events"`
 }
 
+// ListClaimsResponse is the response for GET /api/v1/infra, /api/v1/infra/storage, /api/v1/infra/vaults
+type ListClaimsResponse struct {
+	Claims []ClaimSummary `json:"claims"`
+	Total  int            `json:"total"`
+}
+
+// ClaimSummary is a lightweight representation of a Claim for list views
+type ClaimSummary struct {
+	Name              string            `json:"name"`
+	Namespace         string            `json:"namespace"`
+	Kind              string            `json:"kind"`
+	Status            string            `json:"status"` // Ready, Progressing, Failed
+	Synced            bool              `json:"synced"`
+	Ready             bool              `json:"ready"`
+	ConnectionSecret  string            `json:"connectionSecret,omitempty"`
+	CreationTimestamp time.Time         `json:"creationTimestamp"`
+	Labels            map[string]string `json:"labels,omitempty"`
+}
+
 // ClaimResource represents a Crossplane Claim (StorageBucket or Vault)
 type ClaimResource struct {
 	Name              string            `json:"name"`
