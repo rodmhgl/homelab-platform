@@ -1,40 +1,53 @@
 ---
+# ExternalSecret for Grafana Admin Credentials
+# Syncs secrets from bootstrap Azure Key Vault to Kubernetes Secret
 apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
 metadata:
   name: grafana-admin-creds
   namespace: monitoring
+  labels:
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/component: secret
+    app.kubernetes.io/part-of: monitoring
 spec:
+  # Refresh interval for secret synchronization
   refreshInterval: 1h
+
+  # Reference to ClusterSecretStore (deployed at wave 3.5)
   secretStoreRef:
     name: azure-bootstrap-kv
     kind: ClusterSecretStore
 
+  # Target Kubernetes Secret configuration
   target:
     name: grafana-admin-creds
-    creationPolicy: Owner
+    creationPolicy: Owner  # ESO owns the Secret lifecycle
+    deletionPolicy: Retain # Keep Secret if ExternalSecret is deleted (safety)
     template:
       type: Opaque
-      data:
-        admin-user: "{{ .username }}"
-        admin-password: "{{ .password }}"
+      metadata:
+        labels:
+          app.kubernetes.io/name: grafana
+          app.kubernetes.io/component: secret
+          app.kubernetes.io/part-of: monitoring
 
-  dataFrom:
-    - extract:
+  # Secret mappings from Azure Key Vault
+  data:
+    # Grafana admin username
+    # Key Vault secret name: grafana-admin-username
+    - secretKey: admin-user
+      remoteRef:
         conversionStrategy: Default
         decodingStrategy: None
         key: grafana-admin-username
         metadataPolicy: None
-      rewrite:
-        - regexp:
-            source: "(.*)"
-            target: "username"
-    - extract:
-        conversionStrategy: Default  
+
+    # Grafana admin password
+    # Key Vault secret name: grafana-admin-password
+    - secretKey: admin-password
+      remoteRef:
+        conversionStrategy: Default
         decodingStrategy: None
         key: grafana-admin-password
         metadataPolicy: None
-      rewrite:
-        - regexp:
-            source: "(.*)"
-            target: "password"
