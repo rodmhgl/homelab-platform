@@ -10,16 +10,23 @@ metadata:
 spec:
   project: platform
   sources:
-    - repoURL: https://prometheus-community.github.io/helm-charts
-      chart: kube-prometheus-stack
-      targetRevision: 66.3.1
+    ## Helm chart — installs Prometheus Operator + Prometheus + Alertmanager + Grafana
+    - chart: kube-prometheus-stack
       helm:
         releaseName: monitoring
         valueFiles:
-          - $values/homelab-platform/platform/monitoring/values.yaml
-    - repoURL: https://github.com/rodmhgl/homelab-platform.git
-      targetRevision: main
+          - $values/platform/monitoring/values.yaml
+      repoURL: https://prometheus-community.github.io/helm-charts
+      targetRevision: 66.3.1
+
+    ## Platform repo — values.yaml
+    - path: platform/monitoring
       ref: values
+      repoURL: https://github.com/rodmhgl/homelab-platform
+      targetRevision: main
+      directory:
+        ## Only pick up values.yaml
+        include: "values.yaml"
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
