@@ -1,0 +1,81 @@
+## Falco — Argo CD Application
+##
+## Installs Falco runtime security monitoring via Helm. Falco monitors syscalls to detect
+## suspicious runtime behavior in containers: unexpected shell executions, sensitive file
+## access, privilege escalation, network anomalies, etc.
+##
+## Sync-wave ordering (inter-Application, enforced by root App-of-Apps):
+##   Wave 4:  gatekeeper (admission control core)
+##   Wave 5:  gatekeeper-templates (ConstraintTemplates)
+##   Wave 6:  gatekeeper-constraints (Constraint enforcement)
+##   Wave 7:  trivy-operator (continuous CVE scanning)
+##   Wave 8:  this Application (runtime security monitoring)
+##
+## Why wave 8? Falco monitors runtime behavior AFTER containers are running. It complements
+## the earlier compliance layers:
+## - Gatekeeper: admission-time policy (blocks bad manifests before creation)
+## - Trivy: post-deployment vulnerability scanning (finds CVEs in images)
+## - Falco: runtime behavior monitoring (detects malicious activity in running containers)
+##
+## Falco Events Integration:
+## - Falco detects suspicious events (shell in container, sensitive file read, etc.)
+## - Events are sent to Falcosidekick (deployed separately in task #34)
+## - Falcosidekick forwards events to Platform API webhook (POST /api/v1/webhooks/falco)
+## - Platform API persists events and exposes them via /api/v1/compliance/events
+## - Portal UI displays real-time security events timeline
+##
+## Custom Rules:
+## This Application deploys two custom rule sets (via custom-rules.yaml ConfigMap):
+## 1. Unexpected Shell in Container — detects shell execution in production containers
+## 2. Sensitive File Read — monitors access to /etc/shadow, SSH keys, certificates, etc.
+##
+## These custom rules are mounted into Falco pods and loaded alongside default rules.
+##
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "8"
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/name: falco
+    app.kubernetes.io/part-of: platform
+  name: falco
+  namespace: argocd
+spec:
+  destination:
+    namespace: falco
+    server: https://kubernetes.default.svc
+  project: platform
+  sources:
+    ## Helm chart — installs Falco DaemonSet + eBPF driver
+    - chart: falco
+      helm:
+        releaseName: falco
+        valueFiles:
+          - $values/platform/falco/values.yaml
+      repoURL: https://falcosecurity.github.io/charts
+      targetRevision: "4.23.0"
+
+    ## Platform repo — values.yaml + custom-rules.yaml
+    - path: platform/falco
+      ref: values
+      repoURL: https://github.com/rodmhgl/homelab-platform
+      targetRevision: main
+      directory:
+        recurse: false
+        exclude: "application.yaml"
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    ## Retry on transient failures (kernel module loading can take time)
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m

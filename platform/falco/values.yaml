@@ -1,0 +1,167 @@
+## Falco Helm values for homelab IDP
+## Chart: falcosecurity/falco
+## Version: 4.23.x
+##
+## Falco installs as a DaemonSet (one pod per node) and monitors syscalls via eBPF or
+## kernel module to detect suspicious runtime behavior.
+##
+## Driver modes:
+## - eBPF (modern_ebpf): Recommended for Kernel >= 5.8, no kernel module needed
+## - Kernel Module (kmod): Traditional approach, requires kernel headers
+## - Modern BPF (default for this version): CO-RE eBPF with BTF, most portable
+##
+## For AKS with Ubuntu nodes (Kernel >= 5.15), modern_ebpf is the best choice.
+
+## Driver configuration
+driver:
+  ## eBPF driver is preferred over kernel module (no kernel headers needed)
+  kind: modern_ebpf
+
+  ## Loader configuration (downloads/compiles driver if needed)
+  loader:
+    enabled: true
+    initContainer:
+      enabled: true
+      image:
+        repository: falcosecurity/falco-driver-loader
+        tag: 0.40.1
+      resources:
+        limits:
+          cpu: 500m
+          memory: 512Mi
+        requests:
+          cpu: 100m
+          memory: 128Mi
+
+## Falco configuration
+falco:
+  ## Load default rules + custom rules
+  ## Default rules cover: shells in containers, file modifications, network anomalies, etc.
+  rules_file:
+    - /etc/falco/falco_rules.yaml
+    - /etc/falco/falco_rules.local.yaml
+    - /etc/falco/k8s_audit_rules.yaml
+    - /etc/falco/rules.d  # Custom rules directory
+
+  ## JSON output for easier parsing by Falcosidekick
+  json_output: true
+  json_include_output_property: true
+  json_include_tags_property: true
+
+  ## Log level (emergency, alert, critical, error, warning, notice, info, debug)
+  log_level: info
+
+  ## Priority threshold for alerts (debug, info, notice, warning, error, critical, alert, emergency)
+  ## We only want to be notified about warnings and above
+  priority: warning
+
+  ## Syscall event drops — if Falco can't keep up with syscall rate, it drops events
+  ## Log a warning if more than 1% of events are dropped
+  syscall_event_drops:
+    threshold: 0.01
+    actions:
+      - log
+      - alert
+
+  ## Buffered outputs (improves performance by batching events)
+  buffered_outputs: true
+
+  ## HTTP output disabled (we use Falcosidekick instead for routing)
+  http_output:
+    enabled: false
+
+  ## Program output disabled (we use Falcosidekick for webhook delivery)
+  program_output:
+    enabled: false
+
+  ## gRPC output (used by Falcosidekick to receive events)
+  grpc:
+    enabled: true
+    bind_address: "0.0.0.0:5060"
+    threadiness: 0
+
+  ## gRPC output for event streaming (Falcosidekick connects here)
+  grpc_output:
+    enabled: true
+
+## Resource limits for Falco pods
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 200m
+    memory: 256Mi
+
+## Tolerations — run on all nodes (including control plane if tainted)
+tolerations:
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/control-plane
+
+## Service account
+serviceAccount:
+  create: true
+  name: falco
+
+## Security context (Falco needs privileged access to monitor syscalls)
+## This is expected and required for runtime security monitoring
+podSecurityContext:
+  runAsNonRoot: false
+  runAsUser: 0
+
+## Container security context
+## Falco requires privileged mode to load eBPF programs and access /sys/kernel
+containerSecurityContext:
+  privileged: true
+  allowPrivilegeEscalation: true
+  readOnlyRootFilesystem: true
+  capabilities:
+    add:
+      - SYS_ADMIN  # Required for eBPF
+      - SYS_RESOURCE
+      - SYS_PTRACE  # Required for process inspection
+
+## Custom rules — mounted as ConfigMap
+## See custom-rules.yaml for rule definitions
+customRules:
+  ## ConfigMap name containing custom rules
+  ## This ConfigMap is created by Argo CD from custom-rules.yaml
+  rules-homelab.yaml: |-
+    # Custom rules are defined in custom-rules.yaml and mounted here
+    # The actual rule content is managed separately for easier updates
+
+## Extra volumes for custom rules
+extraVolumes:
+  - name: custom-rules
+    configMap:
+      name: falco-custom-rules
+
+extraVolumeMounts:
+  - name: custom-rules
+    mountPath: /etc/falco/rules.d
+    readOnly: true
+
+## Falcosidekick integration
+## Falcosidekick is deployed separately (task #34) and receives events from Falco
+## via gRPC, then routes them to multiple destinations (Platform API webhook, Slack, etc.)
+falcosidekick:
+  ## Falcosidekick is installed separately (not as a subchart)
+  ## This keeps the installation modular: Falco (wave 8), Falcosidekick (wave 9)
+  enabled: false
+
+## RBAC — Falco needs cluster-wide read access to pods/namespaces for enrichment
+rbac:
+  create: true
+
+## Service Monitor for Prometheus (kube-prometheus-stack)
+## Falco exposes metrics on /metrics (events processed, drops, rule matches, etc.)
+serviceMonitor:
+  enabled: false  # Set to true after kube-prometheus-stack is fully deployed
+  labels:
+    release: prometheus
+  interval: 30s
+  scrapeTimeout: 10s
+
+## Node affinity/tolerations — not needed for homelab single node pool
+nodeSelector: {}
+affinity: {}
