@@ -78,6 +78,36 @@ Shows:
 rdp version
 ```
 
+### Infrastructure Management
+
+```bash
+# List all infrastructure Claims
+rdp infra list
+
+# List only StorageBucket Claims
+rdp infra list storage
+
+# List only Vault Claims
+rdp infra list vaults
+
+# Filter by namespace
+rdp infra list --namespace production
+
+# Output as JSON
+rdp infra list --json
+
+# Show detailed status for a specific Claim
+rdp infra status storage my-bucket
+rdp infra status vault my-vault --namespace production
+
+# JSON output for detailed status
+rdp infra status storage my-bucket --json
+```
+
+Shows:
+- **list**: Tabular view of all Claims with name, namespace, kind, status, ready/synced flags, age, and connection secret
+- **status**: Detailed view including Claim details, Composite resource, Managed Azure resources, and recent Kubernetes events
+
 ### Other Commands
 
 ```bash
@@ -108,7 +138,8 @@ cli/
 │   ├── config.go        # Config subcommands (init, view, set)
 │   ├── version.go       # Version command
 │   ├── status.go        # Platform health summary
-│   └── ...              # Future command groups (apps, infra, scaffold, etc.)
+│   ├── infra.go         # Infrastructure commands (list, status)
+│   └── ...              # Future command groups (apps, scaffold, compliance, etc.)
 ├── go.mod
 └── README.md
 ```

@@ -109,7 +109,7 @@ All configuration is via environment variables:
 - `GET /api/v1/infra/vaults` — ✅ List Vault Claims
 - `GET /api/v1/infra/{kind}/{name}` — ✅ Get Claim details + composed resource tree + events (supports ?namespace=)
 - `POST /api/v1/infra` — ✅ Create Claim (commits YAML to app repo via GitOps)
-- `DELETE /api/v1/infra/{kind}/{name}` — ⬜ Delete Claim (commits removal to app repo)
+- `DELETE /api/v1/infra/{kind}/{name}` — ✅ Delete Claim (commits removal to app repo via GitOps)
 
 ### Compliance
 
@@ -181,23 +181,26 @@ Project scaffolding — runs Copier templates, creates GitHub repos, onboards to
 
 ### `internal/infra/`
 
-Infrastructure management endpoints — queries and creates Crossplane Claims via GitOps, providing full resource tree visibility.
+Infrastructure management endpoints — full CRUD operations for Crossplane Claims via GitOps, providing complete resource tree visibility.
 
 **Files:**
-- `handler.go` — HTTP handlers for list, detail, and create operations
+- `handler.go` — HTTP handlers for list, detail, create, and delete operations
 - `client.go` — Kubernetes dynamic client wrapper with GVR mappings
-- `github.go` — GitHub API client for GitOps commits
+- `github.go` — GitHub API client for GitOps commits and deletions
 - `validation.go` — Request validation and Gatekeeper constraint pre-validation
 - `templates.go` — YAML generation for StorageBucket and Vault Claims
 - `types.go` — Request/response DTOs
 - `validation_test.go` — Comprehensive test suite (27 test cases)
+- `delete_test.go` — Delete endpoint tests (JSON marshaling, validation)
 - `README.md` — Full package documentation
 
 **Key Features:**
+- **Complete CRUD operations** — List, Read, Create, Delete all via GitOps pattern
 - Lists all Claims across namespaces (GET /api/v1/infra, /infra/storage, /infra/vaults)
 - Traverses complete Crossplane resource tree: Claim → Composite → Managed Resources
 - Retrieves Kubernetes Events for all resources in the tree (essential for debugging provisioning failures)
 - **GitOps Claim creation** — POST /api/v1/infra commits YAML to app repos, not directly to cluster
+- **GitOps Claim deletion** — DELETE /api/v1/infra/:kind/:name removes YAML from app repos, Argo CD syncs deletion
 - **Three-layer validation** — Request structure → Gatekeeper constraints → GitHub API
 - **Smart defaults** — location: southcentralus, tier: Standard, redundancy: LRS, skuName: standard
 - **Template-based YAML generation** — Go text/template with automatic label injection
@@ -206,7 +209,7 @@ Infrastructure management endpoints — queries and creates Crossplane Claims vi
 - Returns Azure resource names via `externalName` field
 - Lightweight `ClaimSummary` for list views, full `ClaimResource` for detail views
 
-See `internal/infra/README.md` and `docs/infra-create-endpoint.md` for detailed documentation.
+See `internal/infra/README.md`, `docs/DELETE_INFRA.md`, and `docs/INFRA_API_SUMMARY.md` for detailed documentation.
 
 ## Development
 

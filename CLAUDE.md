@@ -22,8 +22,8 @@ AKS Home Lab Internal Developer Platform (IDP) mono-repo.
 | `platform/` (remaining) | ⬜ Falco, monitoring, kagent, HolmesGPT |
 | `scaffolds/go-service/` | ✅ Copier template — complete (23 template files: copier.yml, main.go, Dockerfile, k8s/, claims/, CI/CD, Makefile, supporting files) |
 | `scaffolds/python-service/` | ⬜ Copier template (not started) |
-| `api/` | ✅ Platform API (Go + Chi) — scaffold (#51), Argo CD (#42, #43, #89), compliance (#48), infra list/query/create (#44, #45, #46). GitOps Claim creation with three-layer validation. Secrets via ESO (#40, #87). RBAC configured. Argo CD integration complete — service account + RBAC via GitOps (values.yaml), token via one-time bootstrap script. |
-| `cli/` | 🔨 rdp CLI (Go + Cobra) — Root command, config management, version command complete. `rdp status` command (#66) ✅ aggregates platform health from API endpoints. |
+| `api/` | ✅ Platform API (Go + Chi) — scaffold (#51), Argo CD (#42, #43, #89), compliance (#48), infra complete CRUD (#44-#47). Full GitOps infrastructure management (list/get/create/delete) with three-layer validation. Secrets via ESO (#40, #87). RBAC configured. Argo CD integration complete — service account + RBAC via GitOps (values.yaml), token via one-time bootstrap script. |
+| `cli/` | 🔨 rdp CLI (Go + Cobra) — Root command, config management, version, `rdp status` (#66), `rdp infra list/status` (#68) complete. Pending: interactive create/delete (#69-#71), apps (#67), compliance (#73), secrets (#74), investigate (#75), ask (#76). |
 
 ## Terraform (`infra/`)
 
@@ -178,7 +178,6 @@ Compositions use `function-patch-and-transform` in **Pipeline mode** — not the
 
 **Pending endpoints:**
 
-- `DELETE /api/v1/infra/{kind}/{name}` — Delete Claim (#47)
 - `/api/v1/secrets/*` — ExternalSecrets + connection secrets (#50)
 - `/api/v1/investigate/*` — HolmesGPT integration (#52)
 - `/api/v1/agent/ask` — kagent CRD-based interaction (#53)

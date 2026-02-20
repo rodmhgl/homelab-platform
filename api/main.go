@@ -198,7 +198,7 @@ func setupRouter(scaffoldHandler *scaffold.Handler, argocdHandler *argocd.Handle
 			r.Get("/vaults", infraHandler.HandleListVaultClaims)
 			r.Route("/{kind}/{name}", func(r chi.Router) {
 				r.Get("/", infraHandler.HandleGetResource)
-				r.Delete("/", notImplementedHandler("DELETE /api/v1/infra/{kind}/{name}"))
+				r.Delete("/", infraHandler.HandleDeleteClaim)
 			})
 		})
 

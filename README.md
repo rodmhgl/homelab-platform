@@ -23,8 +23,8 @@ AKS Home Lab Internal Developer Platform (IDP) mono-repo.
 | `platform/holmesgpt/` | ⬜ Pending | AI-powered root cause analysis |
 | `scaffolds/go-service/` | ✅ Complete | Copier template — 23 production-ready template files (copier.yml, main.go, Dockerfile, k8s/ manifests, Crossplane Claims, CI/CD pipeline, Makefile, golangci-lint, Dependabot, CODEOWNERS). Generates Gatekeeper-compliant apps with optional Azure infrastructure. |
 | `scaffolds/python-service/` | ⬜ Pending | Copier template (not started) |
-| `api/` | ✅ Complete | Platform API — Go + Chi router, structured logging, graceful shutdown. Endpoints: scaffold (#51), Argo CD apps (#42, #43, #89), compliance (#48), infra list/query/create (#44, #45, #46). GitOps Claim creation with three-layer validation. RBAC configured. Secrets via ESO. Argo CD integration requires one-time token bootstrap (see `platform/platform-api/setup-argocd-token.sh`). |
-| `cli/` | 🔨 In Progress | `rdp` CLI — Root command, config management (init/view/set), version, and `status` command complete. Status command aggregates health from API (health/ready, compliance, apps, infra). |
+| `api/` | ✅ Complete | Platform API — Go + Chi router, structured logging, graceful shutdown. Endpoints: scaffold (#51), Argo CD apps (#42, #43, #89), compliance (#48), infra full CRUD (#44, #45, #46, #47). Complete GitOps infrastructure management (list/get/create/delete) with three-layer validation. RBAC configured. Secrets via ESO. Argo CD integration requires one-time token bootstrap (see `platform/platform-api/setup-argocd-token.sh`). |
+| `cli/` | 🔨 In Progress | `rdp` CLI — Root command, config management (init/view/set), version, `status` (#66), and `infra list/status` (#68) complete. Next: interactive create/delete commands (#69-#71), apps/compliance/secrets/investigate/ask commands. |
 
 ## Bootstrap
 

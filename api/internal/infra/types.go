@@ -112,3 +112,21 @@ type CreateClaimResponse struct {
 	RepoURL          string `json:"repoUrl"`
 	ConnectionSecret string `json:"connectionSecret"`
 }
+
+// DeleteClaimRequest is the request body for DELETE /api/v1/infra/:kind/:name
+type DeleteClaimRequest struct {
+	RepoOwner string `json:"repoOwner"` // GitHub org/user
+	RepoName  string `json:"repoName"`  // App repo name
+}
+
+// DeleteClaimResponse is the response for DELETE /api/v1/infra/:kind/:name
+type DeleteClaimResponse struct {
+	Success   bool   `json:"success"`
+	Message   string `json:"message"`
+	Kind      string `json:"kind"`
+	Name      string `json:"name"`
+	Namespace string `json:"namespace"`
+	CommitSHA string `json:"commitSha"`
+	FilePath  string `json:"filePath"`
+	RepoURL   string `json:"repoUrl"`
+}

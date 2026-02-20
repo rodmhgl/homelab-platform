@@ -495,3 +495,101 @@ func (h *Handler) HandleCreateClaim(w http.ResponseWriter, r *http.Request) {
 		slog.Error("Failed to encode response", "error", err)
 	}
 }
+
+// HandleDeleteClaim handles DELETE /api/v1/infra/:kind/:name
+// Deletes a Crossplane Claim by removing YAML from the app's Git repository
+func (h *Handler) HandleDeleteClaim(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// 1. Extract path parameters
+	kind := chi.URLParam(r, "kind")
+	name := chi.URLParam(r, "name")
+
+	// Extract namespace from query param (defaults to "default")
+	namespace := r.URL.Query().Get("namespace")
+	if namespace == "" {
+		namespace = "default"
+	}
+
+	// Normalize kind
+	normalizedKind := normalizeKind(kind)
+
+	slog.Info("Deleting infrastructure Claim",
+		"kind", normalizedKind,
+		"name", name,
+		"namespace", namespace,
+	)
+
+	// 2. Parse request body
+	var req DeleteClaimRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		slog.Error("Failed to decode request", "error", err)
+		http.Error(w, fmt.Sprintf(`{"error":"invalid request body: %s"}`, err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	// 3. Validate required fields
+	if req.RepoOwner == "" || req.RepoName == "" {
+		slog.Error("Missing required fields", "repo_owner", req.RepoOwner, "repo_name", req.RepoName)
+		http.Error(w, `{"error":"repoOwner and repoName are required"}`, http.StatusBadRequest)
+		return
+	}
+
+	// 4. Verify the Claim exists in the cluster before deleting from Git
+	// This prevents orphaned deletions if the Claim was already removed
+	claimObj, err := h.client.GetClaim(ctx, namespace, normalizedKind, name)
+	if err != nil {
+		slog.Warn("Claim not found in cluster (may have been manually deleted)",
+			"error", err,
+			"kind", normalizedKind,
+			"name", name,
+		)
+		// Continue with deletion from Git anyway - GitOps reconciliation will handle it
+	} else {
+		slog.Info("Claim exists in cluster",
+			"kind", normalizedKind,
+			"name", name,
+			"resource_version", claimObj.GetResourceVersion(),
+		)
+	}
+
+	// 5. Delete from GitHub
+	filePath := fmt.Sprintf("k8s/claims/%s.yaml", name)
+	commitMessage := fmt.Sprintf("chore(infra): delete %s Claim %s\n\nNamespace: %s\nRemoved via Platform API",
+		normalizedKind,
+		name,
+		namespace,
+	)
+
+	commitSHA, err := h.githubClient.DeleteClaim(ctx, req.RepoOwner, req.RepoName, filePath, commitMessage)
+	if err != nil {
+		slog.Error("Failed to delete from GitHub", "error", err)
+		http.Error(w, fmt.Sprintf(`{"error":"failed to delete from repository: %s"}`, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	// 6. Build response
+	response := DeleteClaimResponse{
+		Success:   true,
+		Message:   "Claim deleted successfully from Git. Argo CD will remove it from the cluster.",
+		Kind:      normalizedKind,
+		Name:      name,
+		Namespace: namespace,
+		CommitSHA: commitSHA,
+		FilePath:  filePath,
+		RepoURL:   fmt.Sprintf("https://github.com/%s/%s", req.RepoOwner, req.RepoName),
+	}
+
+	slog.Info("Claim deleted successfully",
+		"kind", normalizedKind,
+		"name", name,
+		"commit_sha", commitSHA,
+		"file_path", filePath,
+	)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		slog.Error("Failed to encode response", "error", err)
+	}
+}

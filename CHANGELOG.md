@@ -6,6 +6,65 @@ All notable changes to the homelab-platform project.
 
 ### Added
 
+**2026-02-20: CLI Infrastructure Commands**
+
+- ✅ **rdp infra list Command** (`cli/cmd/infra.go`)
+  - Lists all Crossplane Claims or filters by type (storage/vaults)
+  - Tabular output with name, namespace, kind, status, ready/synced flags, age, connection secret
+  - Supports `--namespace` flag to filter by namespace
+  - Supports `--json` flag for JSON output
+  - Calls `GET /api/v1/infra`, `GET /api/v1/infra/storage`, or `GET /api/v1/infra/vaults`
+  - Examples: `rdp infra list`, `rdp infra list storage --namespace production`
+
+- ✅ **rdp infra status Command** (`cli/cmd/infra.go`)
+  - Shows detailed status for a specific Crossplane Claim
+  - Displays Claim details, Composite resource, Managed Azure resources, recent Kubernetes events
+  - Supports `--namespace` flag (defaults to "default")
+  - Supports `--json` flag for JSON output
+  - Calls `GET /api/v1/infra/:kind/:name?namespace=<ns>`
+  - Examples: `rdp infra status storage my-bucket`, `rdp infra status vault my-vault --namespace production`
+
+- ✅ **Documentation** (`cli/README.md`)
+  - Updated with infrastructure command examples
+  - Usage patterns for list and status commands
+  - Flag descriptions and JSON output examples
+  - Completes task #68 — developers can now view infrastructure Claims via CLI
+
+**2026-02-20: DELETE Infrastructure Endpoint**
+
+- ✅ **DELETE /api/v1/infra/:kind/:name Endpoint** (`api/internal/infra/handler.go`)
+  - Implements GitOps deletion pattern for Crossplane Claims
+  - Removes Claim YAML from app repository, triggering Argo CD reconciliation
+  - Verifies Claim existence before deletion (warns if missing, continues anyway)
+  - Supports both StorageBucket and Vault Claims with kind normalization
+  - Request validation: requires repoOwner and repoName in body
+  - Returns commit SHA, file path, and repo URL in response
+  - Completes task #47 — full CRUD operations for infrastructure management
+
+- ✅ **GitHub Delete Operation** (`api/internal/infra/github.go`)
+  - New `DeleteClaim()` method using GitHub Contents API
+  - Retrieves file SHA before deletion (required by GitHub API)
+  - Handles 404 errors gracefully with clear error messages
+  - Follows same commit pattern as CREATE operations
+  - Comprehensive logging for audit trail
+
+- ✅ **Request/Response Types** (`api/internal/infra/types.go`)
+  - `DeleteClaimRequest`: repoOwner, repoName fields
+  - `DeleteClaimResponse`: success, message, kind, name, namespace, commitSHA, filePath, repoURL
+  - JSON marshaling/unmarshaling validation in tests
+
+- ✅ **Tests** (`api/internal/infra/delete_test.go`)
+  - JSON marshaling/unmarshaling tests for request and response types
+  - Request validation tests (missing fields, empty requests)
+  - All tests passing with comprehensive coverage
+
+- ✅ **Documentation** (`api/docs/DELETE_INFRA.md`)
+  - Complete endpoint reference with examples
+  - GitOps workflow diagram
+  - Security considerations and error handling
+  - cURL examples for both StorageBucket and Vault deletions
+  - Idempotency notes and related endpoints
+
 **2026-02-20: Argo CD Integration Fix (GitOps Refactoring)**
 
 - ✅ **Argo CD Service Account GitOps Configuration** (`platform/argocd/values.yaml`)
@@ -140,15 +199,18 @@ All notable changes to the homelab-platform project.
 - ✅ Scaffold (`POST /api/v1/scaffold`)
 - ✅ Argo CD Apps (`GET /api/v1/apps`, `GET /api/v1/apps/{name}`, `POST /api/v1/apps/{name}/sync`) — requires one-time token bootstrap
 - ✅ Compliance (`GET /api/v1/compliance/summary|policies|violations|vulnerabilities`)
-- ✅ Infrastructure Query (`GET /api/v1/infra/{kind}/{name}`)
 - ✅ Infrastructure List (`GET /api/v1/infra`, `GET /api/v1/infra/storage`, `GET /api/v1/infra/vaults`)
+- ✅ Infrastructure Query (`GET /api/v1/infra/{kind}/{name}`)
 - ✅ Infrastructure Create (`POST /api/v1/infra`)
+- ✅ Infrastructure Delete (`DELETE /api/v1/infra/{kind}/{name}`)
 
 **Scaffolds:**
 - ✅ go-service (23 production-ready template files)
 
 **CLI:**
 - ✅ Root command + config management
+- ✅ `rdp status` — platform health summary
+- ✅ `rdp infra list/status` — view infrastructure Claims
 
 ### Pending Components
 
@@ -158,7 +220,6 @@ All notable changes to the homelab-platform project.
 - ⬜ HolmesGPT
 
 **Platform API Endpoints:**
-- ⬜ Infrastructure Delete (`DELETE /api/v1/infra/{kind}/{name}`)
 - ⬜ Secrets (`GET /api/v1/secrets/{namespace}`)
 - ⬜ Investigation (`POST /api/v1/investigate`, `GET /api/v1/investigate/{id}`)
 - ⬜ AI Agent (`POST /api/v1/agent/ask`)
@@ -168,7 +229,14 @@ All notable changes to the homelab-platform project.
 - ⬜ python-service
 
 **CLI:**
-- ⬜ All subcommands (apps, infra, compliance, secrets, investigate, ask)
+- ⬜ `rdp infra create storage/vault` — interactive prompts
+- ⬜ `rdp infra delete` — interactive deletion
+- ⬜ `rdp apps list/status/sync/logs` — Argo CD management
+- ⬜ `rdp compliance summary/policies/vulns/events` — compliance views
+- ⬜ `rdp secrets list/create` — secrets management
+- ⬜ `rdp investigate` — HolmesGPT integration
+- ⬜ `rdp ask` — kagent natural language
+- ⬜ `rdp scaffold create` — interactive scaffolding
 
 **Portal UI:**
 - ⬜ React SPA (not started)

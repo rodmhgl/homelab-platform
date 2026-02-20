@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/http"
 
 	"github.com/google/go-github/v66/github"
 	"golang.org/x/oauth2"
@@ -98,4 +99,46 @@ func (g *GitHubClient) CommitClaim(ctx context.Context, owner, repo, filePath, y
 	)
 
 	return *createdCommit.SHA, nil
+}
+
+// DeleteClaim deletes a Claim YAML file from the app repository
+// Returns the commit SHA on success
+func (g *GitHubClient) DeleteClaim(ctx context.Context, owner, repo, filePath, commitMessage string) (string, error) {
+	slog.Info("Deleting Claim from GitHub",
+		"owner", owner,
+		"repo", repo,
+		"path", filePath,
+	)
+
+	// 1. Get the file to retrieve its SHA (required for deletion)
+	fileContent, _, resp, err := g.client.Repositories.GetContents(ctx, owner, repo, filePath, &github.RepositoryContentGetOptions{
+		Ref: "main",
+	})
+	if err != nil {
+		if resp != nil && resp.StatusCode == http.StatusNotFound {
+			return "", fmt.Errorf("file not found: %s", filePath)
+		}
+		return "", fmt.Errorf("failed to get file: %w", err)
+	}
+
+	// 2. Delete the file
+	deleteOptions := &github.RepositoryContentFileOptions{
+		Message: github.String(commitMessage),
+		SHA:     fileContent.SHA,
+		Branch:  github.String("main"),
+	}
+
+	commitResponse, _, err := g.client.Repositories.DeleteFile(ctx, owner, repo, filePath, deleteOptions)
+	if err != nil {
+		return "", fmt.Errorf("failed to delete file: %w", err)
+	}
+
+	commitSHA := *commitResponse.Commit.SHA
+
+	slog.Info("Claim deleted successfully",
+		"commit_sha", commitSHA,
+		"file_path", filePath,
+	)
+
+	return commitSHA, nil
 }
