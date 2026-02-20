@@ -113,11 +113,11 @@ All configuration is via environment variables:
 
 ### Compliance
 
-- `GET /api/v1/compliance/summary` — Aggregated compliance score
-- `GET /api/v1/compliance/policies` — Gatekeeper policies
-- `GET /api/v1/compliance/violations` — Gatekeeper audit violations
-- `GET /api/v1/compliance/vulnerabilities` — Trivy CVE reports
-- `GET /api/v1/compliance/events` — Falco security events
+- `GET /api/v1/compliance/summary` — ✅ Aggregated compliance score (0-100) + violation/vulnerability counts
+- `GET /api/v1/compliance/policies` — ✅ Gatekeeper ConstraintTemplates (8 policies)
+- `GET /api/v1/compliance/violations` — ✅ Gatekeeper audit violations (supports filtering: ?namespace=, ?kind=, ?constraint=)
+- `GET /api/v1/compliance/vulnerabilities` — ✅ Trivy CVE reports (supports filtering: ?namespace=, ?severity=, ?image=)
+- `GET /api/v1/compliance/events` — ⬜ Falco security events (placeholder; awaiting Falco deployment)
 
 ### Secrets
 
@@ -136,6 +136,48 @@ All configuration is via environment variables:
 
 - `POST /api/v1/webhooks/falco` — Falcosidekick webhook (security events)
 - `POST /api/v1/webhooks/argocd` — Argo CD webhook (sync events)
+
+## Package Structure
+
+### `internal/compliance/`
+
+Compliance aggregation endpoints — queries Gatekeeper Constraints and Trivy VulnerabilityReports to provide unified compliance view.
+
+**Files:**
+- `handler.go` — HTTP handlers for 5 endpoints
+- `client.go` — Kubernetes dynamic client wrapper
+- `types.go` — Request/response DTOs
+- `README.md` — Full package documentation
+
+**Key Features:**
+- Queries all 8 deployed Gatekeeper constraint kinds
+- Aggregates Trivy CVE scans from workload namespaces (excludes platform namespaces)
+- Calculates compliance score: `max(0, 100 - (violations × 5) - (critical_cves × 10) - (high_cves × 5))`
+- Supports query filtering (namespace, severity, kind, constraint, image)
+- Graceful degradation when CRDs are missing
+
+See `internal/compliance/README.md` for detailed documentation.
+
+### `internal/argocd/`
+
+Argo CD application management — wraps Argo CD API for listing, viewing, and syncing applications.
+
+**Files:**
+- `handler.go` — HTTP handlers
+- `client.go` — Argo CD HTTP client wrapper
+- `types.go` — Request/response DTOs
+
+### `internal/scaffold/`
+
+Project scaffolding — runs Copier templates, creates GitHub repos, onboards to Argo CD.
+
+**Files:**
+- `handler.go` — HTTP handler
+- `copier.go` — Copier template execution
+- `github.go` — GitHub API client
+- `git.go` — Git operations
+- `types.go` — Request/response DTOs
+- `README.md` — Full package documentation
 
 ## Development
 
@@ -158,6 +200,8 @@ Kubernetes manifests are in the platform repository at `homelab-platform/platfor
 The API runs in the `platform` namespace with a ServiceAccount that has appropriate RBAC for:
 - Crossplane Claims (read, list, watch, create, delete)
 - Argo CD Applications (read, list via API)
+- Gatekeeper Constraints & ConstraintTemplates (read, list)
+- Trivy VulnerabilityReports (read, list)
 - ExternalSecrets (read, list)
 - kagent Tasks (create, watch)
 - Falco events (receive webhooks)

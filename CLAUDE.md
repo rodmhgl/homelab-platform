@@ -22,7 +22,7 @@ AKS Home Lab Internal Developer Platform (IDP) mono-repo.
 | `platform/` (remaining) | ⬜ Falco, monitoring, kagent, HolmesGPT |
 | `scaffolds/go-service/` | ✅ Copier template — complete (23 template files: copier.yml, main.go, Dockerfile, k8s/, claims/, CI/CD, Makefile, supporting files) |
 | `scaffolds/python-service/` | ⬜ Copier template (not started) |
-| `api/` | ✅ Platform API (Go + Chi) — scaffold endpoint implemented (task #51). Secrets via ESO (tasks #40, #87). |
+| `api/` | ✅ Platform API (Go + Chi) — scaffold endpoint (task #51), Argo CD endpoints (tasks #42, #43), compliance endpoints (task #48). Secrets via ESO (tasks #40, #87). |
 | `cli/` | 🔨 rdp CLI (Go + Cobra) — Cobra root command + Viper config management complete |
 
 ## Terraform (`infra/`)
