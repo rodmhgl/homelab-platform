@@ -18,6 +18,7 @@ import (
 	"github.com/rodmhgl/homelab-platform/api/internal/compliance"
 	"github.com/rodmhgl/homelab-platform/api/internal/infra"
 	"github.com/rodmhgl/homelab-platform/api/internal/scaffold"
+	"github.com/rodmhgl/homelab-platform/api/internal/webhooks"
 )
 
 // Config holds the application configuration loaded from environment variables
@@ -88,15 +89,21 @@ func main() {
 		Token:     cfg.ArgocdToken,
 	})
 
+	// Initialize event store (circular buffer, max 1000 events)
+	eventStore := compliance.NewInMemoryEventStore(1000)
+
 	// Initialize compliance handler
 	complianceHandler, err := compliance.NewHandler(&compliance.Config{
 		KubeConfig: cfg.KubeConfig,
 		InCluster:  cfg.InCluster,
-	})
+	}, eventStore)
 	if err != nil {
 		slog.Error("Failed to initialize compliance handler", "error", err)
 		os.Exit(1)
 	}
+
+	// Initialize webhook handler
+	webhookHandler := webhooks.NewHandler(eventStore)
 
 	// Initialize infra handler
 	infraHandler, err := infra.NewHandler(&infra.Config{
@@ -109,7 +116,7 @@ func main() {
 	}
 
 	// Initialize router
-	r := setupRouter(scaffoldHandler, argocdHandler, complianceHandler, infraHandler)
+	r := setupRouter(scaffoldHandler, argocdHandler, complianceHandler, infraHandler, webhookHandler)
 
 	// Create HTTP server
 	srv := &http.Server{
@@ -157,7 +164,7 @@ func main() {
 }
 
 // setupRouter configures the Chi router with middleware and routes
-func setupRouter(scaffoldHandler *scaffold.Handler, argocdHandler *argocd.Handler, complianceHandler *compliance.Handler, infraHandler *infra.Handler) *chi.Mux {
+func setupRouter(scaffoldHandler *scaffold.Handler, argocdHandler *argocd.Handler, complianceHandler *compliance.Handler, infraHandler *infra.Handler, webhookHandler *webhooks.Handler) *chi.Mux {
 	r := chi.NewRouter()
 
 	// Global middleware
@@ -229,7 +236,7 @@ func setupRouter(scaffoldHandler *scaffold.Handler, argocdHandler *argocd.Handle
 
 		// Webhook endpoints (no auth middleware - validated by payload)
 		r.Route("/webhooks", func(r chi.Router) {
-			r.Post("/falco", notImplementedHandler("POST /api/v1/webhooks/falco"))
+			r.Post("/falco", webhookHandler.HandleFalcoWebhook)
 			r.Post("/argocd", notImplementedHandler("POST /api/v1/webhooks/argocd"))
 		})
 	})

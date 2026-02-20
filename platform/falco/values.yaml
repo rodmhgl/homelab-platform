@@ -63,15 +63,17 @@ falco:
   program_output:
     enabled: false
 
-  ## gRPC server (deprecated - will be configured later for Falcosidekick)
-  ## For now, disabled to avoid TLS certificate errors
-  ## Falcosidekick (Task #34) will use the unix socket or http_output instead
+  ## gRPC server — listens on port 5060 for Falcosidekick connections
+  ## Falcosidekick autodiscovers this via K8s Service (falco.falco.svc.cluster.local:5060)
   grpc:
-    enabled: false
+    enabled: true
+    bind_address: "0.0.0.0:5060"
+    threadiness: 0  # Auto-detect based on CPU count
 
-  ## gRPC output (deprecated - disabled for now)
+  ## gRPC output — sends events to Falcosidekick
+  ## Falcosidekick listens on the gRPC server above
   grpc_output:
-    enabled: false
+    enabled: true
 
 ## Resource limits for Falco pods
 resources:

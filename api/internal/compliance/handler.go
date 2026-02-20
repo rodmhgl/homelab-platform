@@ -7,24 +7,27 @@ import (
 	"math"
 	"net/http"
 	"strings"
+	"time"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 // Handler handles compliance API requests
 type Handler struct {
-	client *Client
+	client     *Client
+	eventStore EventStore
 }
 
 // NewHandler creates a new compliance handler
-func NewHandler(cfg *Config) (*Handler, error) {
+func NewHandler(cfg *Config, eventStore EventStore) (*Handler, error) {
 	client, err := NewClient(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kubernetes client: %w", err)
 	}
 
 	return &Handler{
-		client: client,
+		client:     client,
+		eventStore: eventStore,
 	}, nil
 }
 
@@ -105,12 +108,32 @@ func (h *Handler) HandleSummary(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Query recent Falco events (last 24 hours)
+	since := time.Now().Add(-24 * time.Hour)
+	recentEvents := h.eventStore.List(EventFilters{Since: since})
+
+	// Count Falco events by severity
+	criticalEvents := 0
+	errorEvents := 0
+	for _, event := range recentEvents {
+		switch event.Severity {
+		case "Critical", "Alert", "Emergency":
+			criticalEvents++
+		case "Error":
+			errorEvents++
+		}
+	}
+
 	// Calculate compliance score
-	// Formula: max(0, 100 - (violations * 5) - (critical_cves * 10) - (high_cves * 5))
+	// Formula: max(0, 100 - (violations * 5) - (critical_cves * 10) - (high_cves * 5) - (critical_events * 15) - (error_events * 8))
+	// Rationale: Critical runtime events (15×) weighted heavier than critical CVEs (10×)
+	// because they indicate active threats vs potential vulnerabilities
 	score := 100.0
 	score -= float64(totalViolations) * 5.0
 	score -= float64(vulnerabilitiesBySeverity["CRITICAL"]) * 10.0
 	score -= float64(vulnerabilitiesBySeverity["HIGH"]) * 5.0
+	score -= float64(criticalEvents) * 15.0
+	score -= float64(errorEvents) * 8.0
 	score = math.Max(0, score)
 
 	response := SummaryResponse{
@@ -125,6 +148,8 @@ func (h *Handler) HandleSummary(w http.ResponseWriter, r *http.Request) {
 		"score", score,
 		"violations", totalViolations,
 		"vulnerabilities", totalVulnerabilities,
+		"critical_events", criticalEvents,
+		"error_events", errorEvents,
 	)
 
 	w.Header().Set("Content-Type", "application/json")
@@ -419,14 +444,42 @@ func (h *Handler) HandleVulnerabilities(w http.ResponseWriter, r *http.Request) 
 }
 
 // HandleEvents handles GET /api/v1/compliance/events
-// Returns security events (Falco) - placeholder until Falco is deployed
+// Returns security events from Falco with optional filtering
 func (h *Handler) HandleEvents(w http.ResponseWriter, r *http.Request) {
-	slog.Info("Listing security events (Falco not yet deployed)")
+	// Parse query parameters for filtering
+	namespace := r.URL.Query().Get("namespace")
+	severity := r.URL.Query().Get("severity")
+	rule := r.URL.Query().Get("rule")
+	sinceStr := r.URL.Query().Get("since")
 
-	// TODO: Implement when Falco is deployed (task #33)
-	response := EventsResponse{
-		Events: []SecurityEvent{},
+	filters := EventFilters{
+		Namespace: namespace,
+		Severity:  severity,
+		Rule:      rule,
+		Limit:     100, // Default limit to prevent excessive response sizes
 	}
+
+	// Parse since parameter (RFC3339 timestamp)
+	if sinceStr != "" {
+		since, err := time.Parse(time.RFC3339, sinceStr)
+		if err == nil {
+			filters.Since = since
+		} else {
+			slog.Warn("Invalid since parameter, ignoring", "since", sinceStr, "error", err)
+		}
+	}
+
+	// Query event store
+	events := h.eventStore.List(filters)
+
+	slog.Info("Listed security events",
+		"count", len(events),
+		"namespace", namespace,
+		"severity", severity,
+		"rule", rule,
+	)
+
+	response := EventsResponse{Events: events}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

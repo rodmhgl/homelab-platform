@@ -1,0 +1,74 @@
+## Falcosidekick — Argo CD Application
+##
+## Falcosidekick is the routing layer between Falco and external systems. It receives
+## security events from Falco via gRPC and forwards them to multiple destinations.
+##
+## In this platform:
+##   Falco (DaemonSet, wave 8) → Falcosidekick (Deployment, wave 9) → Platform API webhook
+##
+## Sync-wave ordering:
+##   Wave 8:  falco (event detection)
+##   Wave 9:  this Application (event routing)
+##   Wave 10: platform-api (event consumption)
+##
+## Why separate from Falco? Modular design allows independent scaling and configuration.
+## Falcosidekick can route to multiple outputs (Slack, PagerDuty, etc.) without touching
+## Falco configuration.
+##
+## Key features:
+## - gRPC client to Falco (autodiscovers via K8s Service)
+## - Webhook output to Platform API (internal cluster traffic, no auth)
+## - Prometheus metrics (ServiceMonitor enabled)
+## - JSON payload transformation (Falco events → standardized webhook format)
+##
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "9"
+    ## Dependency annotation — ensures Falco is healthy before Falcosidekick starts
+    argocd.argoproj.io/sync-options: "SkipDryRunOnMissingResource=true"
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/name: falcosidekick
+    app.kubernetes.io/part-of: platform
+    app.kubernetes.io/component: security
+  name: falcosidekick
+  namespace: argocd
+spec:
+  destination:
+    namespace: falco
+    server: https://kubernetes.default.svc
+  project: platform
+  sources:
+    ## Helm chart — installs Falcosidekick deployment + service
+    - chart: falcosidekick
+      helm:
+        releaseName: falcosidekick
+        valueFiles:
+          - $values/platform/falcosidekick/values.yaml
+      repoURL: https://falcosecurity.github.io/charts
+      targetRevision: "0.10.0"
+
+    ## Platform repo — values.yaml with webhook configuration
+    - path: platform/falcosidekick
+      ref: values
+      repoURL: https://github.com/rodmhgl/homelab-platform
+      targetRevision: main
+      directory:
+        recurse: false
+        exclude: "application.yaml"
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false  # Namespace already exists from Falco
+      - ServerSideApply=true
+    ## Retry on transient failures (gRPC connection to Falco may take a few seconds)
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m

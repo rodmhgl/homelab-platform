@@ -1,0 +1,98 @@
+## Falcosidekick Helm values for homelab IDP
+## Chart: falcosecurity/falcosidekick
+## Version: 0.10.x
+##
+## Falcosidekick routes Falco security events to external systems. It connects to Falco
+## via gRPC (autodiscovers falco.falco.svc.cluster.local:5060) and forwards events to
+## configured outputs.
+##
+## Architecture:
+##   Falco DaemonSet → gRPC → Falcosidekick Deployment → HTTP webhook → Platform API
+##
+## Output strategy:
+## - Primary: Platform API webhook (internal cluster traffic, no TLS/auth needed)
+## - Future: Slack (for Critical/Error events), PagerDuty (for incident management)
+##
+## Resource sizing: Small (single-replica homelab deployment)
+##
+
+## Replica count — single instance sufficient for homelab traffic
+replicaCount: 1
+
+## Resource limits (homelab-sized)
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 50m
+    memory: 128Mi
+
+## Falcosidekick configuration
+config:
+  ## Debug mode (set to true for troubleshooting, false for production)
+  debug: false
+
+  ## Webhook output — primary destination for Falco events
+  webhook:
+    address: "http://platform-api.platform-api.svc.cluster.local:8080/api/v1/webhooks/falco"
+    ## Custom headers (reserved for future HMAC signature validation)
+    ## customHeaders: "X-Falco-Signature: <hmac-sha256>"
+
+    ## Webhook-specific settings
+    minimumpriority: ""  # Forward all priorities (filtering happens in Platform API)
+    mutualtls: false     # Internal cluster traffic, no TLS needed
+    checkcert: false     # Internal cluster traffic, no cert validation needed
+
+  ## Slack output (disabled for initial deployment)
+  ## Uncomment to enable Slack notifications for Critical/Error events
+  # slack:
+  #   webhookurl: "https://hooks.slack.com/services/XXX"
+  #   minimumpriority: "error"
+  #   messageformat: "text"
+
+  ## Other outputs (all disabled)
+  ## These can be enabled later via GitOps (values.yaml update)
+  # pagerduty:
+  #   routingkey: ""
+  # teams:
+  #   webhookurl: ""
+  # discord:
+  #   webhookurl: ""
+
+## Service account
+serviceAccount:
+  create: true
+  name: falcosidekick
+
+## RBAC — not required (Falcosidekick doesn't query K8s API)
+rbac:
+  create: false
+
+## Service Monitor for Prometheus (kube-prometheus-stack)
+## Falcosidekick exposes metrics on /metrics (events processed, outputs sent, errors)
+serviceMonitor:
+  enabled: true
+  labels:
+    release: prometheus
+  interval: 30s
+  scrapeTimeout: 10s
+
+## Pod security context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1234
+  fsGroup: 1234
+
+## Container security context
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+## Node affinity/tolerations — not needed for homelab single node pool
+nodeSelector: {}
+affinity: {}
+tolerations: []
