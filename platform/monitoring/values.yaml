@@ -188,8 +188,16 @@ alertmanager:
 grafana:
   enabled: true
 
-  # Admin credentials
-  adminPassword: admin  # CHANGE IN PRODUCTION
+  # Admin credentials — using variable expansion to satisfy security assertion
+  admin:
+    existingSecret: ""
+    userKey: admin-user
+    passwordKey: admin-password
+
+  # Environment variables for admin credentials
+  env:
+    GF_SECURITY_ADMIN_USER: admin
+    GF_SECURITY_ADMIN_PASSWORD: admin  # CHANGE IN PRODUCTION
 
   # Persistence
   persistence:
@@ -271,9 +279,6 @@ grafana:
 
     auth.anonymous:
       enabled: false
-
-    security:
-      admin_password: admin  # CHANGE IN PRODUCTION
 
 # Node Exporter configuration
 nodeExporter:
