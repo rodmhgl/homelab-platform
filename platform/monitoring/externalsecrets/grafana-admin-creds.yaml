@@ -16,8 +16,8 @@ spec:
     template:
       type: Opaque
       data:
-        admin-user: "{{ .username | b64dec }}"
-        admin-password: "{{ .password | b64dec }}"
+        admin-user: "{{ .username }}"
+        admin-password: "{{ .password }}"
 
   dataFrom:
     - extract:
