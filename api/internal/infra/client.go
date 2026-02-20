@@ -152,13 +152,13 @@ func claimKindToGVR(kind string) (schema.GroupVersionResource, error) {
 	switch strings.ToLower(kind) {
 	case "storagebucket":
 		return schema.GroupVersionResource{
-			Group:    "platform.homelab.io",
+			Group:    "platform.example.com",
 			Version:  "v1alpha1",
 			Resource: "storagebuckets",
 		}, nil
 	case "vault":
 		return schema.GroupVersionResource{
-			Group:    "platform.homelab.io",
+			Group:    "platform.example.com",
 			Version:  "v1alpha1",
 			Resource: "vaults",
 		}, nil
@@ -172,13 +172,13 @@ func compositeKindToGVR(kind string) (schema.GroupVersionResource, error) {
 	switch kind {
 	case "XStorageBucket":
 		return schema.GroupVersionResource{
-			Group:    "platform.homelab.io",
+			Group:    "platform.example.com",
 			Version:  "v1alpha1",
 			Resource: "xstoragebuckets",
 		}, nil
 	case "XKeyVault":
 		return schema.GroupVersionResource{
-			Group:    "platform.homelab.io",
+			Group:    "platform.example.com",
 			Version:  "v1alpha1",
 			Resource: "xkeyvaults",
 		}, nil

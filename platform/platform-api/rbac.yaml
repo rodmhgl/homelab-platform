@@ -9,12 +9,12 @@ metadata:
     app.kubernetes.io/component: rbac
 rules:
   # Crossplane Claims (read, list, watch for all API endpoints)
-  - apiGroups: ["azure.homelab.rodst.io"]
+  - apiGroups: ["platform.example.com"]
     resources: ["storagebuckets", "vaults"]
     verbs: ["get", "list", "watch"]
 
   # Crossplane Composite Resources (for resource tree inspection)
-  - apiGroups: ["azure.homelab.rodst.io"]
+  - apiGroups: ["platform.example.com"]
     resources: ["xstoragebuckets", "xkeyvaults"]
     verbs: ["get", "list", "watch"]
 
