@@ -35,7 +35,7 @@ config:
 
   ## Webhook output — primary destination for Falco events
   webhook:
-    address: "http://platform-api.platform-api.svc.cluster.local:8080/api/v1/webhooks/falco"
+    address: "http://platform-api.platform.svc.cluster.local:8080/api/v1/webhooks/falco"
     ## Custom headers (reserved for future HMAC signature validation)
     ## customHeaders: "X-Falco-Signature: <hmac-sha256>"
 
