@@ -16,13 +16,13 @@ AKS Home Lab Internal Developer Platform (IDP) mono-repo.
 | `platform/gatekeeper/` | ✅ Phase C — Gatekeeper Helm install (wave 4) |
 | `platform/gatekeeper-templates/` | ✅ Phase C — 8 ConstraintTemplates (wave 5) |
 | `platform/gatekeeper-constraints/` | ✅ Phase C — 8 Constraints with enforcementAction: deny (wave 6) |
-| `platform/external-secrets/` | ✅ Phase C — ESO Helm install (v0.11.0) + ClusterSecretStore (Workload Identity, wave 3.5). Requires Terraform output placeholders. |
+| `platform/external-secrets/` | ✅ Phase C — ESO Helm install (v0.11.0) + ClusterSecretStore (Workload Identity, wave 3.5). Platform API ExternalSecret resources deployed. Requires Terraform output placeholders. |
 | `platform/trivy-operator/` | ✅ Phase C — Trivy Operator Helm install (v0.32.0) + values.yaml (wave 7). Continuous CVE scanning with VulnerabilityReport CRDs. |
-| `platform/platform-api/` | ✅ Phase D — Platform API Deployment + Service + RBAC (wave 10) |
+| `platform/platform-api/` | ✅ Phase D — Platform API Deployment + Service + RBAC (wave 10). Secrets managed via ESO ExternalSecret (github-pat, openai-api-key, argocd-token). |
 | `platform/` (remaining) | ⬜ Falco, monitoring, kagent, HolmesGPT |
 | `scaffolds/go-service/` | ✅ Copier template — complete (23 template files: copier.yml, main.go, Dockerfile, k8s/, claims/, CI/CD, Makefile, supporting files) |
 | `scaffolds/python-service/` | ⬜ Copier template (not started) |
-| `api/` | ✅ Platform API (Go + Chi) — scaffold endpoint implemented (task #51) |
+| `api/` | ✅ Platform API (Go + Chi) — scaffold endpoint implemented (task #51). Secrets via ESO (tasks #40, #87). |
 | `cli/` | 🔨 rdp CLI (Go + Cobra) — Cobra root command + Viper config management complete |
 
 ## Terraform (`infra/`)

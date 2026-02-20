@@ -14,8 +14,8 @@ AKS Home Lab Internal Developer Platform (IDP) mono-repo.
 | `platform/gatekeeper/` | ✅ Complete | Gatekeeper Helm install (wave 4) |
 | `platform/gatekeeper-templates/` | ✅ Complete | 8 ConstraintTemplates (wave 5) |
 | `platform/gatekeeper-constraints/` | ✅ Complete | 8 Constraints with enforcementAction: deny (wave 6) |
-| `platform/platform-api/` | ✅ Complete | Platform API Kubernetes manifests (Deployment, Service, RBAC, application.yaml) |
-| `platform/external-secrets/` | ✅ Complete | ESO Helm install + ClusterSecretStore (Workload Identity, wave 3.5). Placeholders require Terraform outputs. |
+| `platform/platform-api/` | ✅ Complete | Platform API Kubernetes manifests (Deployment, Service, RBAC, application.yaml). Secrets managed via ESO ExternalSecret (github-pat, openai-api-key, argocd-token). |
+| `platform/external-secrets/` | ✅ Complete | ESO Helm install + ClusterSecretStore (Workload Identity, wave 3.5). Platform API ExternalSecret resources deployed. Placeholders require Terraform outputs. |
 | `platform/trivy-operator/` | ✅ Complete | Trivy Operator v0.32.0 Helm install + values.yaml (wave 7). Continuous CVE scanning with VulnerabilityReport CRDs. |
 | `platform/falco/` | ⬜ Pending | Runtime security + Falcosidekick |
 | `platform/monitoring/` | ⬜ Pending | kube-prometheus-stack + Grafana dashboards |
@@ -23,7 +23,7 @@ AKS Home Lab Internal Developer Platform (IDP) mono-repo.
 | `platform/holmesgpt/` | ⬜ Pending | AI-powered root cause analysis |
 | `scaffolds/go-service/` | ✅ Complete | Copier template — 23 production-ready template files (copier.yml, main.go, Dockerfile, k8s/ manifests, Crossplane Claims, CI/CD pipeline, Makefile, golangci-lint, Dependabot, CODEOWNERS). Generates Gatekeeper-compliant apps with optional Azure infrastructure. |
 | `scaffolds/python-service/` | ⬜ Pending | Copier template (not started) |
-| `api/` | ✅ Complete | Platform API — Go + Chi router, structured logging, graceful shutdown |
+| `api/` | ✅ Complete | Platform API — Go + Chi router, structured logging, graceful shutdown, scaffold endpoint implemented (task #51). Secrets via ESO. |
 | `cli/` | 🔨 In Progress | `rdp` CLI — Cobra root command + Viper config management complete |
 
 ## Bootstrap
