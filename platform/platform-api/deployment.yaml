@@ -38,6 +38,29 @@ spec:
         seccompProfile:
           type: RuntimeDefault
 
+      # Init container to clone scaffold templates from the platform repo
+      initContainers:
+        - name: clone-scaffolds
+          image: alpine/git:latest
+          command:
+            - sh
+            - -c
+            - |
+              git clone --depth 1 --single-branch --branch main \
+                https://github.com/rodmhgl/homelab-platform.git /tmp/repo
+              cp -r /tmp/repo/scaffolds/* /scaffolds/
+              echo "Scaffold templates cloned successfully"
+          volumeMounts:
+            - name: scaffold-templates
+              mountPath: /scaffolds
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop:
+                - ALL
+
       containers:
         - name: platform-api
           image: homelabplatformacr.azurecr.io/platform-api:v0.1.0
@@ -95,9 +118,18 @@ spec:
           volumeMounts:
             - name: tmp
               mountPath: /tmp
+            - name: scaffold-templates
+              mountPath: /app/scaffolds
+              readOnly: true
+            - name: scaffold-work
+              mountPath: /tmp/scaffold
 
       volumes:
         - name: tmp
+          emptyDir: {}
+        - name: scaffold-templates
+          emptyDir: {}
+        - name: scaffold-work
           emptyDir: {}
 
       # Pod topology spread for HA

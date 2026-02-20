@@ -27,3 +27,7 @@ data:
   # AI Operations configuration
   KAGENT_NAMESPACE: "kagent-system"
   HOLMESGPT_URL: "http://holmesgpt.holmesgpt-system.svc.cluster.local:8080"
+
+  # Scaffold configuration
+  SCAFFOLD_TEMPLATES: "/app/scaffolds"
+  SCAFFOLD_WORK_DIR: "/tmp/scaffold"

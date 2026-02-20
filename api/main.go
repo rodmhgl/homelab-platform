@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/kelseyhightower/envconfig"
+	"github.com/rodmhgl/homelab-platform/api/internal/scaffold"
 )
 
 // Config holds the application configuration loaded from environment variables
@@ -39,6 +40,10 @@ type Config struct {
 	OpenAIAPIKey    string `envconfig:"OPENAI_API_KEY"`
 	HolmesGPTURL    string `envconfig:"HOLMESGPT_URL"`
 	KAgentNamespace string `envconfig:"KAGENT_NAMESPACE" default:"kagent-system"`
+
+	// Scaffold configuration
+	ScaffoldTemplates string `envconfig:"SCAFFOLD_TEMPLATES" default:"/app/scaffolds"`
+	ScaffoldWorkDir   string `envconfig:"SCAFFOLD_WORK_DIR" default:"/tmp/scaffold"`
 }
 
 func main() {
@@ -61,8 +66,21 @@ func main() {
 		"log_level", cfg.LogLevel,
 	)
 
+	// Initialize scaffold handler
+	scaffoldHandler, err := scaffold.NewHandler(&scaffold.Config{
+		GithubToken:       cfg.GithubToken,
+		GithubOrg:         cfg.GithubOrg,
+		PlatformRepo:      cfg.PlatformRepo,
+		ScaffoldTemplates: cfg.ScaffoldTemplates,
+		WorkDir:           cfg.ScaffoldWorkDir,
+	})
+	if err != nil {
+		slog.Error("Failed to initialize scaffold handler", "error", err)
+		os.Exit(1)
+	}
+
 	// Initialize router
-	r := setupRouter()
+	r := setupRouter(scaffoldHandler)
 
 	// Create HTTP server
 	srv := &http.Server{
@@ -110,7 +128,7 @@ func main() {
 }
 
 // setupRouter configures the Chi router with middleware and routes
-func setupRouter() *chi.Mux {
+func setupRouter(scaffoldHandler *scaffold.Handler) *chi.Mux {
 	r := chi.NewRouter()
 
 	// Global middleware
@@ -131,7 +149,7 @@ func setupRouter() *chi.Mux {
 
 		// Scaffold endpoints
 		r.Route("/scaffold", func(r chi.Router) {
-			r.Post("/", notImplementedHandler("POST /api/v1/scaffold"))
+			r.Post("/", scaffoldHandler.HandleCreate)
 		})
 
 		// Application management endpoints
