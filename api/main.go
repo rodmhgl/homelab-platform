@@ -15,6 +15,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/rodmhgl/homelab-platform/api/internal/argocd"
+	"github.com/rodmhgl/homelab-platform/api/internal/compliance"
 	"github.com/rodmhgl/homelab-platform/api/internal/scaffold"
 )
 
@@ -86,8 +87,18 @@ func main() {
 		Token:     cfg.ArgocdToken,
 	})
 
+	// Initialize compliance handler
+	complianceHandler, err := compliance.NewHandler(&compliance.Config{
+		KubeConfig: cfg.KubeConfig,
+		InCluster:  cfg.InCluster,
+	})
+	if err != nil {
+		slog.Error("Failed to initialize compliance handler", "error", err)
+		os.Exit(1)
+	}
+
 	// Initialize router
-	r := setupRouter(scaffoldHandler, argocdHandler)
+	r := setupRouter(scaffoldHandler, argocdHandler, complianceHandler)
 
 	// Create HTTP server
 	srv := &http.Server{
@@ -135,7 +146,7 @@ func main() {
 }
 
 // setupRouter configures the Chi router with middleware and routes
-func setupRouter(scaffoldHandler *scaffold.Handler, argocdHandler *argocd.Handler) *chi.Mux {
+func setupRouter(scaffoldHandler *scaffold.Handler, argocdHandler *argocd.Handler, complianceHandler *compliance.Handler) *chi.Mux {
 	r := chi.NewRouter()
 
 	// Global middleware
@@ -182,11 +193,11 @@ func setupRouter(scaffoldHandler *scaffold.Handler, argocdHandler *argocd.Handle
 
 		// Compliance endpoints
 		r.Route("/compliance", func(r chi.Router) {
-			r.Get("/summary", notImplementedHandler("GET /api/v1/compliance/summary"))
-			r.Get("/policies", notImplementedHandler("GET /api/v1/compliance/policies"))
-			r.Get("/violations", notImplementedHandler("GET /api/v1/compliance/violations"))
-			r.Get("/vulnerabilities", notImplementedHandler("GET /api/v1/compliance/vulnerabilities"))
-			r.Get("/events", notImplementedHandler("GET /api/v1/compliance/events"))
+			r.Get("/summary", complianceHandler.HandleSummary)
+			r.Get("/policies", complianceHandler.HandlePolicies)
+			r.Get("/violations", complianceHandler.HandleViolations)
+			r.Get("/vulnerabilities", complianceHandler.HandleVulnerabilities)
+			r.Get("/events", complianceHandler.HandleEvents)
 		})
 
 		// Secrets endpoints
