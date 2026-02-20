@@ -21,13 +21,19 @@ spec:
 
   dataFrom:
     - extract:
+        conversionStrategy: Default	
+        decodingStrategy: None	
         key: grafana-admin-username
+        metadataPolicy: None
       rewrite:
         - regexp:
             source: "(.*)"
             target: "username"
     - extract:
+        conversionStrategy: Default	
+        decodingStrategy: None	
         key: grafana-admin-password
+        metadataPolicy: None
       rewrite:
         - regexp:
             source: "(.*)"
