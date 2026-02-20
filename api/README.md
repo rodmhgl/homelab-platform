@@ -104,9 +104,9 @@ All configuration is via environment variables:
 
 ### Infrastructure
 
-- `GET /api/v1/infra` — ⬜ List all Crossplane Claims
-- `GET /api/v1/infra/storage` — ⬜ List StorageBucket Claims
-- `GET /api/v1/infra/vaults` — ⬜ List Vault Claims
+- `GET /api/v1/infra` — ✅ List all Crossplane Claims (StorageBucket + Vault)
+- `GET /api/v1/infra/storage` — ✅ List StorageBucket Claims
+- `GET /api/v1/infra/vaults` — ✅ List Vault Claims
 - `GET /api/v1/infra/{kind}/{name}` — ✅ Get Claim details + composed resource tree + events (supports ?namespace=)
 - `POST /api/v1/infra` — ⬜ Create Claim (commits YAML to app repo)
 - `DELETE /api/v1/infra/{kind}/{name}` — ⬜ Delete Claim (commits removal to app repo)
@@ -184,17 +184,19 @@ Project scaffolding — runs Copier templates, creates GitHub repos, onboards to
 Infrastructure management endpoints — queries Crossplane Claims, Composites, and Managed Resources to provide full resource tree visibility.
 
 **Files:**
-- `handler.go` — HTTP handler for resource tree queries
+- `handler.go` — HTTP handlers for list and detail queries
 - `client.go` — Kubernetes dynamic client wrapper with GVR mappings
 - `types.go` — Request/response DTOs
 - `README.md` — Full package documentation
 
 **Key Features:**
+- Lists all Claims across namespaces (GET /api/v1/infra, /infra/storage, /infra/vaults)
 - Traverses complete Crossplane resource tree: Claim → Composite → Managed Resources
 - Retrieves Kubernetes Events for all resources in the tree (essential for debugging provisioning failures)
 - Supports Claims in any namespace via `?namespace=` query parameter
 - Determines resource status from Crossplane conditions (Ready, Synced)
 - Returns Azure resource names via `externalName` field
+- Lightweight `ClaimSummary` for list views, full `ClaimResource` for detail views
 
 See `internal/infra/README.md` for detailed documentation.
 
