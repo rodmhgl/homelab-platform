@@ -1,0 +1,59 @@
+# This file tracks Copier template answers for update support
+# Do not edit manually — use `copier update` to apply template changes
+
+_commit: {{ _copier_conf.vcs_ref_hash }}
+_src_path: {{ _copier_conf.src_path }}
+
+# Core Metadata
+project_name: {{ project_name }}
+project_description: {{ project_description }}
+go_module_path: {{ go_module_path }}
+
+# Service Configuration
+http_port: {{ http_port }}
+include_grpc: {{ include_grpc }}
+{% if include_grpc %}
+grpc_port: {{ grpc_port }}
+{% endif %}
+include_database: {{ include_database }}
+{% if include_database %}
+database_type: {{ database_type }}
+{% endif %}
+
+# Infrastructure
+include_storage: {{ include_storage }}
+{% if include_storage %}
+storage_location: {{ storage_location }}
+storage_redundancy: {{ storage_redundancy }}
+{% endif %}
+include_keyvault: {{ include_keyvault }}
+{% if include_keyvault %}
+keyvault_location: {{ keyvault_location }}
+{% endif %}
+
+# Kubernetes
+namespace: {{ namespace }}
+replicas: {{ replicas }}
+enable_hpa: {{ enable_hpa }}
+{% if enable_hpa %}
+hpa_min_replicas: {{ hpa_min_replicas }}
+hpa_max_replicas: {{ hpa_max_replicas }}
+hpa_cpu_threshold: {{ hpa_cpu_threshold }}
+{% endif %}
+
+# Resources
+cpu_request: {{ cpu_request }}
+cpu_limit: {{ cpu_limit }}
+memory_request: {{ memory_request }}
+memory_limit: {{ memory_limit }}
+
+# Registry
+acr_name: {{ acr_name }}
+
+# GitHub
+github_org: {{ github_org }}
+enable_dependabot: {{ enable_dependabot }}
+enable_codeowners: {{ enable_codeowners }}
+{% if enable_codeowners %}
+codeowners: {{ codeowners }}
+{% endif %}

@@ -21,7 +21,8 @@ AKS Home Lab Internal Developer Platform (IDP) mono-repo.
 | `platform/monitoring/` | ⬜ Pending | kube-prometheus-stack + Grafana dashboards |
 | `platform/kagent/` | ⬜ Pending | Natural language cluster interaction |
 | `platform/holmesgpt/` | ⬜ Pending | AI-powered root cause analysis |
-| `scaffolds/` | ⬜ Pending | Copier templates (go-service, python-service) |
+| `scaffolds/go-service/` | ✅ Complete | Copier template — 23 production-ready template files (copier.yml, main.go, Dockerfile, k8s/ manifests, Crossplane Claims, CI/CD pipeline, Makefile, golangci-lint, Dependabot, CODEOWNERS). Generates Gatekeeper-compliant apps with optional Azure infrastructure. |
+| `scaffolds/python-service/` | ⬜ Pending | Copier template (not started) |
 | `api/` | ✅ Complete | Platform API — Go + Chi router, structured logging, graceful shutdown |
 | `cli/` | 🔨 In Progress | `rdp` CLI — Cobra root command + Viper config management complete |
 

@@ -1,0 +1,29 @@
+module {{ go_module_path }}
+
+go 1.23
+
+require (
+	github.com/go-chi/chi/v5 v5.0.12
+	github.com/kelseyhightower/envconfig v1.4.0
+{%- if include_grpc %}
+	google.golang.org/grpc v1.62.1
+	google.golang.org/protobuf v1.33.0
+{%- endif %}
+{%- if include_database %}
+	{%- if database_type == 'postgres' %}
+	github.com/lib/pq v1.10.9
+	{%- elif database_type == 'mysql' %}
+	github.com/go-sql-driver/mysql v1.8.0
+	{%- elif database_type == 'mongodb' %}
+	go.mongodb.org/mongo-driver v1.14.0
+	{%- endif %}
+	github.com/golang-migrate/migrate/v4 v4.17.0
+{%- endif %}
+{%- if include_storage %}
+	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.3.1
+{%- endif %}
+{%- if include_keyvault %}
+	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets v1.1.0
+	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.5.1
+{%- endif %}
+)

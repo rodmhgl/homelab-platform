@@ -1,0 +1,28 @@
+{% if include_storage -%}
+apiVersion: platform.example.com/v1alpha1
+kind: StorageBucket
+metadata:
+  name: {{ project_name }}-storage
+  namespace: {{ namespace }}
+  labels:
+    app.kubernetes.io/name: {{ project_name }}
+    app.kubernetes.io/instance: {{ project_name }}
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/component: infrastructure
+    app.kubernetes.io/part-of: {{ project_name }}
+    app.kubernetes.io/managed-by: crossplane
+spec:
+  parameters:
+    location: {{ storage_location }}
+    tier: Standard
+    redundancy: {{ storage_redundancy }}
+    enableVersioning: false
+    publicAccess: false  # Enforced by Gatekeeper CrossplaneNoPublicAccess constraint
+  writeConnectionSecretToRef:
+    name: {{ project_name }}-storage
+    namespace: {{ namespace }}
+  compositionSelector:
+    matchLabels:
+      provider: azure
+      type: storage
+{%- endif %}

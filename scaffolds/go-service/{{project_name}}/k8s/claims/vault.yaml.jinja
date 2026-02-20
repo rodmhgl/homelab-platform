@@ -1,0 +1,27 @@
+{% if include_keyvault -%}
+apiVersion: platform.example.com/v1alpha1
+kind: Vault
+metadata:
+  name: {{ project_name }}-vault
+  namespace: {{ namespace }}
+  labels:
+    app.kubernetes.io/name: {{ project_name }}
+    app.kubernetes.io/instance: {{ project_name }}
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/component: infrastructure
+    app.kubernetes.io/part-of: {{ project_name }}
+    app.kubernetes.io/managed-by: crossplane
+spec:
+  parameters:
+    location: {{ keyvault_location }}
+    skuName: standard
+    publicAccess: false  # Enforced by Gatekeeper CrossplaneNoPublicAccess constraint
+    softDeleteRetentionDays: 7
+  writeConnectionSecretToRef:
+    name: {{ project_name }}-vault
+    namespace: {{ namespace }}
+  compositionSelector:
+    matchLabels:
+      provider: azure
+      type: keyvault
+{%- endif %}

@@ -1,0 +1,19 @@
+{% if enable_codeowners -%}
+# CODEOWNERS file for {{ project_name }}
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owners for everything in the repo
+* {{ codeowners }}
+
+# Kubernetes manifests require platform team review
+/k8s/ {{ codeowners }}
+
+# Infrastructure claims require platform team review
+/k8s/claims/ {{ codeowners }}
+
+# CI/CD pipelines require platform team review
+/.github/workflows/ {{ codeowners }}
+
+# Dockerfile changes require security review
+/Dockerfile {{ codeowners }}
+{%- endif %}

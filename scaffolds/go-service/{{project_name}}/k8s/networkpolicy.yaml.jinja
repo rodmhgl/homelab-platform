@@ -1,0 +1,74 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ project_name }}
+  namespace: {{ namespace }}
+  labels:
+    app.kubernetes.io/name: {{ project_name }}
+    app.kubernetes.io/instance: {{ project_name }}
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/component: service
+    app.kubernetes.io/part-of: {{ project_name }}
+    app.kubernetes.io/managed-by: argocd
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: {{ project_name }}
+      app.kubernetes.io/instance: {{ project_name }}
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow traffic from other pods in the same namespace
+  - from:
+    - podSelector: {}
+    ports:
+    - protocol: TCP
+      port: {{ http_port }}
+{%- if include_grpc %}
+    - protocol: TCP
+      port: {{ grpc_port }}
+{%- endif %}
+  # Allow traffic from Ingress controller (if exposed externally)
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: {{ http_port }}
+  egress:
+  # Allow DNS resolution
+  - to:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+  # Allow HTTPS to external services (Azure APIs, external dependencies)
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 443
+{%- if include_database %}
+  # Allow database connections (adjust port based on database_type)
+  - to:
+    - podSelector:
+        matchLabels:
+          app: {{ database_type }}
+    ports:
+    - protocol: TCP
+      {% if database_type == 'postgres' -%}
+      port: 5432
+      {%- elif database_type == 'mysql' -%}
+      port: 3306
+      {%- elif database_type == 'mongodb' -%}
+      port: 27017
+      {%- endif %}
+{%- endif %}
+  # Allow communication with other services in the same namespace
+  - to:
+    - podSelector: {}

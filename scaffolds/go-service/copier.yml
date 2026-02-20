@@ -1,0 +1,307 @@
+# Copier template configuration for Go microservices
+# https://copier.readthedocs.io/
+
+_templates_suffix: .jinja
+_answers_file: .copier-answers.yml
+
+# === Core Project Metadata ===
+
+project_name:
+  type: str
+  help: "Service name (lowercase, hyphens only, e.g., 'user-api')"
+  validator: >-
+    {% if not project_name %}
+    Project name is required
+    {% elif project_name != project_name|lower %}
+    Project name must be lowercase
+    {% elif project_name|regex_search('[^a-z0-9-]') %}
+    Project name can only contain lowercase letters, numbers, and hyphens
+    {% elif project_name[0] == '-' or project_name[-1] == '-' %}
+    Project name cannot start or end with a hyphen
+    {% elif project_name|length < 3 %}
+    Project name must be at least 3 characters
+    {% elif project_name|length > 63 %}
+    Project name cannot exceed 63 characters (DNS label limit)
+    {% endif %}
+
+project_description:
+  type: str
+  help: "Brief service description"
+  default: "A Go microservice built on the platform"
+
+go_module_path:
+  type: str
+  help: "Go module path (e.g., 'github.com/rodmhgl/{{ project_name }}')"
+  default: "github.com/rodmhgl/{{ project_name }}"
+  validator: >-
+    {% if not go_module_path %}
+    Go module path is required
+    {% elif not '/' in go_module_path %}
+    Go module path must include a domain/org (e.g., github.com/org/project)
+    {% endif %}
+
+# === Service Configuration ===
+
+http_port:
+  type: int
+  help: "HTTP server port (1024-65535)"
+  default: 8080
+  validator: >-
+    {% if http_port < 1024 or http_port > 65535 %}
+    Port must be between 1024 and 65535 (avoid privileged ports)
+    {% endif %}
+
+include_grpc:
+  type: bool
+  default: false
+  help: "Include gRPC server scaffold?"
+
+grpc_port:
+  type: int
+  help: "gRPC server port (1024-65535)"
+  default: 9090
+  when: "{{ include_grpc }}"
+  validator: >-
+    {% if include_grpc and (grpc_port < 1024 or grpc_port > 65535) %}
+    Port must be between 1024 and 65535
+    {% elif include_grpc and grpc_port == http_port %}
+    gRPC port must differ from HTTP port
+    {% endif %}
+
+# === Infrastructure Dependencies ===
+
+include_database:
+  type: bool
+  default: false
+  help: "Include database migration setup (golang-migrate)?"
+
+database_type:
+  type: str
+  help: "Database type"
+  default: postgres
+  choices:
+    - postgres
+    - mysql
+    - mongodb
+  when: "{{ include_database }}"
+
+include_storage:
+  type: bool
+  default: false
+  help: "Include Azure Storage Bucket (Crossplane Claim)?"
+
+storage_location:
+  type: str
+  help: "Azure region for storage (must match cluster region)"
+  default: southcentralus
+  choices:
+    - southcentralus
+    - eastus
+    - westus2
+    - centralus
+  when: "{{ include_storage }}"
+
+storage_redundancy:
+  type: str
+  help: "Storage redundancy tier"
+  default: LRS
+  choices:
+    - LRS    # Locally-redundant (cheapest)
+    - ZRS    # Zone-redundant
+    - GRS    # Geo-redundant
+    - GZRS   # Geo-zone-redundant
+  when: "{{ include_storage }}"
+
+include_keyvault:
+  type: bool
+  default: false
+  help: "Include Azure Key Vault (Crossplane Claim)?"
+
+keyvault_location:
+  type: str
+  help: "Azure region for Key Vault (must match cluster region)"
+  default: southcentralus
+  choices:
+    - southcentralus
+    - eastus
+    - westus2
+    - centralus
+  when: "{{ include_keyvault }}"
+
+# === Kubernetes Configuration ===
+
+namespace:
+  type: str
+  help: "Kubernetes namespace (defaults to 'workloads')"
+  default: workloads
+  validator: >-
+    {% if not namespace %}
+    Namespace is required
+    {% elif namespace|regex_search('[^a-z0-9-]') %}
+    Namespace can only contain lowercase letters, numbers, and hyphens
+    {% elif namespace|length > 63 %}
+    Namespace cannot exceed 63 characters
+    {% endif %}
+
+replicas:
+  type: int
+  help: "Number of replicas (for production-like readiness)"
+  default: 2
+  validator: >-
+    {% if replicas < 1 %}
+    At least 1 replica is required
+    {% elif replicas > 10 %}
+    Replicas should not exceed 10 (check cluster capacity)
+    {% endif %}
+
+enable_hpa:
+  type: bool
+  default: true
+  help: "Enable Horizontal Pod Autoscaler?"
+
+hpa_min_replicas:
+  type: int
+  help: "HPA minimum replicas"
+  default: 2
+  when: "{{ enable_hpa }}"
+  validator: >-
+    {% if enable_hpa and hpa_min_replicas < 1 %}
+    HPA min replicas must be at least 1
+    {% elif enable_hpa and hpa_min_replicas > replicas %}
+    HPA min replicas cannot exceed static replicas count
+    {% endif %}
+
+hpa_max_replicas:
+  type: int
+  help: "HPA maximum replicas"
+  default: 6
+  when: "{{ enable_hpa }}"
+  validator: >-
+    {% if enable_hpa and hpa_max_replicas <= hpa_min_replicas %}
+    HPA max replicas must exceed min replicas
+    {% elif enable_hpa and hpa_max_replicas > 20 %}
+    HPA max replicas should not exceed 20 (check cluster capacity)
+    {% endif %}
+
+hpa_cpu_threshold:
+  type: int
+  help: "HPA CPU utilization target (percent)"
+  default: 70
+  when: "{{ enable_hpa }}"
+  validator: >-
+    {% if enable_hpa and (hpa_cpu_threshold < 20 or hpa_cpu_threshold > 95) %}
+    CPU threshold should be between 20% and 95%
+    {% endif %}
+
+# === Resource Management ===
+
+cpu_request:
+  type: str
+  help: "CPU request (e.g., '100m', '0.5')"
+  default: "100m"
+  validator: >-
+    {% if not cpu_request %}
+    CPU request is required (Gatekeeper policy enforces this)
+    {% endif %}
+
+cpu_limit:
+  type: str
+  help: "CPU limit (e.g., '500m', '1')"
+  default: "500m"
+  validator: >-
+    {% if not cpu_limit %}
+    CPU limit is required (Gatekeeper policy enforces this)
+    {% endif %}
+
+memory_request:
+  type: str
+  help: "Memory request (e.g., '128Mi', '256Mi')"
+  default: "128Mi"
+  validator: >-
+    {% if not memory_request %}
+    Memory request is required (Gatekeeper policy enforces this)
+    {% endif %}
+
+memory_limit:
+  type: str
+  help: "Memory limit (e.g., '256Mi', '512Mi')"
+  default: "256Mi"
+  validator: >-
+    {% if not memory_limit %}
+    Memory limit is required (Gatekeeper policy enforces this)
+    {% endif %}
+
+# === Container Registry ===
+
+acr_name:
+  type: str
+  help: "Azure Container Registry name (without .azurecr.io)"
+  default: rllabs
+  validator: >-
+    {% if not acr_name %}
+    ACR name is required
+    {% elif acr_name|regex_search('[^a-zA-Z0-9-]') %}
+    ACR name can only contain alphanumeric characters and hyphens
+    {% endif %}
+
+# === CI/CD & GitHub ===
+
+github_org:
+  type: str
+  help: "GitHub organization or username"
+  default: rodmhgl
+  validator: >-
+    {% if not github_org %}
+    GitHub organization is required for CI/CD setup
+    {% endif %}
+
+enable_dependabot:
+  type: bool
+  default: true
+  help: "Enable Dependabot for dependency updates?"
+
+enable_codeowners:
+  type: bool
+  default: true
+  help: "Generate CODEOWNERS file?"
+
+codeowners:
+  type: str
+  help: "CODEOWNERS (comma-separated GitHub handles, e.g., '@rodmhgl,@team-platform')"
+  default: "@rodmhgl"
+  when: "{{ enable_codeowners }}"
+
+# === Compliance & Security ===
+
+# These are MANDATORY per platform design — no opt-out
+_message_after_copy: |
+
+  ✅ Go service '{{ project_name }}' generated successfully!
+
+  📦 Infrastructure included:
+  {%- if include_storage %}
+    • Azure Storage Bucket ({{ storage_location }}, {{ storage_redundancy }})
+  {%- endif %}
+  {%- if include_keyvault %}
+    • Azure Key Vault ({{ keyvault_location }})
+  {%- endif %}
+  {%- if include_database %}
+    • Database migrations ({{ database_type }})
+  {%- endif %}
+
+  🚀 Next steps:
+    1. cd {{ project_name }}
+    2. Review generated files (especially k8s/claims/* for infrastructure)
+    3. git init && git add . && git commit -m "Initial scaffold"
+    4. gh repo create {{ github_org }}/{{ project_name }} --source=. --push --private
+    5. Wait for Argo CD ApplicationSet to detect the app (via platform repo's apps/{{ project_name }}/config.json)
+
+  📋 Compliance:
+    ✓ Resource limits enforced (Gatekeeper policy satisfied)
+    ✓ Required labels present (app.kubernetes.io/*)
+    ✓ NetworkPolicy generated
+    ✓ No privileged containers
+    ✓ Liveness + Readiness probes configured
+    ✓ Image from allowed ACR ({{ acr_name }}.azurecr.io)
+
+  📖 Documentation: See PLATFORM_DESIGN.md for full workflow

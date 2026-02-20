@@ -1,0 +1,26 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: {{ namespace }}
+
+resources:
+  - serviceaccount.yaml
+  - deployment.yaml
+  - service.yaml
+{%- if enable_hpa %}
+  - hpa.yaml
+{%- endif %}
+  - pdb.yaml
+  - networkpolicy.yaml
+  - configmap.yaml
+
+# Common labels applied to all resources
+commonLabels:
+  app.kubernetes.io/name: {{ project_name }}
+  app.kubernetes.io/instance: {{ project_name }}
+  app.kubernetes.io/managed-by: argocd
+
+# Images to be patched by CI/CD pipeline
+images:
+  - name: {{ acr_name }}.azurecr.io/{{ project_name }}
+    newTag: latest  # CI/CD will override with git SHA or semantic version

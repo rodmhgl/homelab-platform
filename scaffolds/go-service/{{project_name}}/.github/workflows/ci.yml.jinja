@@ -1,0 +1,184 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+env:
+  GO_VERSION: "1.23"
+  ACR_NAME: {{ acr_name }}
+  IMAGE_NAME: {{ project_name }}
+  AZURE_CLIENT_ID: {% raw %}${{ secrets.AZURE_CLIENT_ID }}{% endraw %}
+  AZURE_TENANT_ID: {% raw %}${{ secrets.AZURE_TENANT_ID }}{% endraw %}
+  AZURE_SUBSCRIPTION_ID: {% raw %}${{ secrets.AZURE_SUBSCRIPTION_ID }}{% endraw %}
+
+permissions:
+  contents: read
+  id-token: write  # Required for OIDC token
+
+jobs:
+  lint-and-test:
+    name: Lint and Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: {% raw %}${{ env.GO_VERSION }}{% endraw %}
+          cache: true
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Run go fmt check
+        run: |
+          if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+            echo "Code is not formatted. Run 'make fmt'"
+            gofmt -s -l .
+            exit 1
+          fi
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Install golangci-lint
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin latest
+
+      - name: Run golangci-lint
+        run: golangci-lint run --timeout 5m
+
+      - name: Run tests
+        run: go test -v -race -coverprofile=coverage.out ./...
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.out
+          flags: unittests
+          name: codecov-{{ project_name }}
+
+  build-and-push:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    needs: lint-and-test
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Azure Login via OIDC
+        uses: azure/login@v2
+        with:
+          client-id: {% raw %}${{ env.AZURE_CLIENT_ID }}{% endraw %}
+          tenant-id: {% raw %}${{ env.AZURE_TENANT_ID }}{% endraw %}
+          subscription-id: {% raw %}${{ env.AZURE_SUBSCRIPTION_ID }}{% endraw %}
+
+      - name: Login to Azure Container Registry
+        run: |
+          az acr login --name {% raw %}${{ env.ACR_NAME }}{% endraw %}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: {% raw %}${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}{% endraw %}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          load: true
+          tags: {% raw %}${{ steps.meta.outputs.tags }}{% endraw %}
+          labels: {% raw %}${{ steps.meta.outputs.labels }}{% endraw %}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: {% raw %}${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}{% endraw %}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'  # Fail pipeline on CRITICAL/HIGH vulnerabilities
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Push Docker image to ACR
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: {% raw %}${{ steps.meta.outputs.tags }}{% endraw %}
+          labels: {% raw %}${{ steps.meta.outputs.labels }}{% endraw %}
+          cache-from: type=gha
+
+      - name: Update Kustomize image tag
+        if: github.ref == 'refs/heads/main'
+        run: |
+          cd k8s
+          # Update kustomization.yaml with new image tag
+          sed -i "s|newTag:.*|newTag: {% raw %}${{ github.sha }}{% endraw %}|" kustomization.yaml
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add kustomization.yaml
+          git commit -m "chore: Update image to {% raw %}${{ github.sha }}{% endraw %} [skip ci]" || echo "No changes to commit"
+          git push origin main
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.ref == 'refs/heads/develop'
+    environment:
+      name: staging
+      url: https://{{ project_name }}-staging.{{ namespace }}.svc.cluster.local
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Trigger Argo CD Sync (Staging)
+        run: |
+          echo "Argo CD ApplicationSet will auto-detect changes and sync"
+          # Optional: Use argocd CLI to force sync
+          # argocd app sync {{ project_name }}-staging
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: https://{{ project_name }}.{{ namespace }}.svc.cluster.local
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Trigger Argo CD Sync (Production)
+        run: |
+          echo "Argo CD ApplicationSet will auto-detect changes and sync"
+          # Git commit in build-and-push job triggers Argo CD sync
