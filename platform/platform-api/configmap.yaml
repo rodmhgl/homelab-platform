@@ -18,7 +18,8 @@ data:
   IN_CLUSTER: "true"
 
   # Argo CD configuration
-  ARGOCD_SERVER_URL: "argocd-server.argocd.svc.cluster.local"
+  # Internal cluster URL - uses HTTP (port 80) for internal communication
+  ARGOCD_SERVER_URL: "http://argocd-server.argocd.svc.cluster.local"
 
   # GitHub configuration
   GITHUB_ORG: "rodmhgl"  # Update with your GitHub org
