@@ -16,6 +16,7 @@ import (
 	"github.com/kelseyhightower/envconfig"
 	"github.com/rodmhgl/homelab-platform/api/internal/argocd"
 	"github.com/rodmhgl/homelab-platform/api/internal/compliance"
+	"github.com/rodmhgl/homelab-platform/api/internal/infra"
 	"github.com/rodmhgl/homelab-platform/api/internal/scaffold"
 )
 
@@ -97,8 +98,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Initialize infra handler
+	infraHandler, err := infra.NewHandler(&infra.Config{
+		KubeConfig: cfg.KubeConfig,
+		InCluster:  cfg.InCluster,
+	})
+	if err != nil {
+		slog.Error("Failed to initialize infra handler", "error", err)
+		os.Exit(1)
+	}
+
 	// Initialize router
-	r := setupRouter(scaffoldHandler, argocdHandler, complianceHandler)
+	r := setupRouter(scaffoldHandler, argocdHandler, complianceHandler, infraHandler)
 
 	// Create HTTP server
 	srv := &http.Server{
@@ -146,7 +157,7 @@ func main() {
 }
 
 // setupRouter configures the Chi router with middleware and routes
-func setupRouter(scaffoldHandler *scaffold.Handler, argocdHandler *argocd.Handler, complianceHandler *compliance.Handler) *chi.Mux {
+func setupRouter(scaffoldHandler *scaffold.Handler, argocdHandler *argocd.Handler, complianceHandler *compliance.Handler, infraHandler *infra.Handler) *chi.Mux {
 	r := chi.NewRouter()
 
 	// Global middleware
@@ -186,7 +197,7 @@ func setupRouter(scaffoldHandler *scaffold.Handler, argocdHandler *argocd.Handle
 			r.Get("/storage", notImplementedHandler("GET /api/v1/infra/storage"))
 			r.Get("/vaults", notImplementedHandler("GET /api/v1/infra/vaults"))
 			r.Route("/{kind}/{name}", func(r chi.Router) {
-				r.Get("/", notImplementedHandler("GET /api/v1/infra/{kind}/{name}"))
+				r.Get("/", infraHandler.HandleGetResource)
 				r.Delete("/", notImplementedHandler("DELETE /api/v1/infra/{kind}/{name}"))
 			})
 		})
