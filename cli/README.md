@@ -58,12 +58,31 @@ rdp --config /path/to/config.yaml <command>
 
 ## Usage
 
+### Platform Status
+
+```bash
+# Display comprehensive platform health summary
+rdp status
+```
+
+Shows:
+- API health and readiness
+- Compliance score and violation count
+- Application health status
+- Infrastructure resources (Claims)
+
+### Version Information
+
+```bash
+# Check version
+rdp version
+```
+
+### Other Commands
+
 ```bash
 # Get help
 rdp help
-
-# Check version
-rdp version
 ```
 
 ## Development
@@ -88,6 +107,7 @@ cli/
 │   ├── root.go          # Root command and config management
 │   ├── config.go        # Config subcommands (init, view, set)
 │   ├── version.go       # Version command
+│   ├── status.go        # Platform health summary
 │   └── ...              # Future command groups (apps, infra, scaffold, etc.)
 ├── go.mod
 └── README.md

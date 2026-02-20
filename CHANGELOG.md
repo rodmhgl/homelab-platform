@@ -6,6 +6,19 @@ All notable changes to the homelab-platform project.
 
 ### Added
 
+**2026-02-20: CLI Status Command**
+
+- ✅ **rdp status Command** (`cli/cmd/status.go`)
+  - Comprehensive platform health dashboard aggregating multiple API endpoints
+  - Displays: API health/readiness, compliance score, application health, infrastructure Claims count
+  - Graceful degradation: shows available data even when individual endpoints fail
+  - Professional formatting with Unicode box-drawing characters and status icons (✓, ✗, ⚠)
+  - Three-tier configuration: flags > environment variables > config file (~/.rdp/config.yaml)
+  - Error handling fix: main.go now properly displays errors to stderr before exit
+  - Documentation: Updated cli/README.md with usage examples and output format
+  - Completes task #66 — first operational CLI command beyond config management
+  - **Known issue:** Applications section shows error due to Argo CD API configuration (tracked in #89)
+
 **2026-02-20: Infrastructure Create Endpoint (GitOps)**
 
 - ✅ **Infrastructure Create API** (`POST /api/v1/infra`)

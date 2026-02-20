@@ -22,8 +22,8 @@ AKS Home Lab Internal Developer Platform (IDP) mono-repo.
 | `platform/` (remaining) | ⬜ Falco, monitoring, kagent, HolmesGPT |
 | `scaffolds/go-service/` | ✅ Copier template — complete (23 template files: copier.yml, main.go, Dockerfile, k8s/, claims/, CI/CD, Makefile, supporting files) |
 | `scaffolds/python-service/` | ⬜ Copier template (not started) |
-| `api/` | ✅ Platform API (Go + Chi) — scaffold (#51), Argo CD (#42, #43), compliance (#48), infra list/query/create (#44, #45, #46). GitOps Claim creation with three-layer validation. Secrets via ESO (#40, #87). RBAC configured. |
-| `cli/` | 🔨 rdp CLI (Go + Cobra) — Cobra root command + Viper config management complete |
+| `api/` | ✅ Platform API (Go + Chi) — scaffold (#51), Argo CD (#42, #43), compliance (#48), infra list/query/create (#44, #45, #46). GitOps Claim creation with three-layer validation. Secrets via ESO (#40, #87). RBAC configured. Known issue: `/api/v1/apps` endpoint needs Argo CD token configuration (#89). |
+| `cli/` | 🔨 rdp CLI (Go + Cobra) — Root command, config management, version command complete. `rdp status` command (#66) ✅ aggregates platform health from API endpoints. |
 
 ## Terraform (`infra/`)
 
