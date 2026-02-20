@@ -1,0 +1,74 @@
+## Trivy Operator — Argo CD Application
+##
+## Installs Trivy Operator via Helm. Trivy Operator continuously scans workload images
+## for CVE vulnerabilities and generates VulnerabilityReport CRDs that the Platform API
+## aggregates into the /api/v1/compliance/* endpoints.
+##
+## Sync-wave ordering (inter-Application, enforced by root App-of-Apps):
+##   Wave 4:  gatekeeper (admission control core)
+##   Wave 5:  gatekeeper-templates (ConstraintTemplates)
+##   Wave 6:  gatekeeper-constraints (Constraint enforcement)
+##   Wave 7:  this Application (continuous CVE scanning for admitted workloads)
+##
+## Why wave 7? Trivy scans workloads AFTER they are admitted by Gatekeeper. The two
+## compliance systems are complementary: Gatekeeper blocks bad manifests at admission
+## time; Trivy discovers CVEs in running containers post-deployment.
+##
+## Trivy Operator creates several CRDs:
+## - VulnerabilityReport — per-workload CVE scan results
+## - ConfigAuditReport — K8s manifest security best practices
+## - ExposedSecretReport — scans for hardcoded secrets in images
+## - RbacAssessmentReport — RBAC privilege analysis
+##
+## These reports are consumed by:
+## - Platform API /api/v1/compliance/vulns endpoint (aggregates VulnerabilityReports)
+## - Portal UI Vulnerability Feed (Critical/High CVEs grouped by image)
+## - Grafana dashboards (CVE trend analysis)
+##
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/name: trivy-operator
+    app.kubernetes.io/part-of: platform
+  name: trivy-operator
+  namespace: argocd
+spec:
+  destination:
+    namespace: trivy-system
+    server: https://kubernetes.default.svc
+  project: platform
+  sources:
+    ## Helm chart — installs Trivy Operator controller + CRDs
+    - chart: trivy-operator
+      helm:
+        releaseName: trivy-operator
+        valueFiles:
+          - $values/platform/trivy-operator/values.yaml
+      repoURL: https://aquasecurity.github.io/helm-charts/
+      targetRevision: "0.27.1"
+
+    ## Platform repo — values.yaml
+    - path: platform/trivy-operator
+      ref: values
+      repoURL: https://github.com/rodmhgl/homelab-platform
+      targetRevision: main
+      directory:
+        recurse: false
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    ## Retry on transient failures (CRD webhook registration takes time)
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m

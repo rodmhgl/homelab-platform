@@ -1,0 +1,131 @@
+## Trivy Operator Helm values for homelab IDP
+## Chart: aquasecurity/trivy-operator
+## Version: 0.27.x
+##
+## Trivy Operator installs into trivy-system. It watches all workloads cluster-wide
+## and generates VulnerabilityReport CRDs for each container image it discovers.
+##
+## Scanning strategy: The operator runs scans on a schedule and whenever new workloads
+## are deployed. Results are persisted as K8s custom resources that the Platform API
+## aggregates via client-go watches.
+
+## Trivy binary mode (Standalone vs ClientServer)
+## Standalone: each scan runs trivy binary locally (simpler, more resource usage)
+## ClientServer: central trivy-server caches scan results (more efficient for multiple scans)
+## For homelab with moderate workload count, Standalone is simpler to operate.
+trivy:
+  mode: Standalone
+
+  ## Vulnerability database updates
+  ## Trivy needs to download the vulnerability DB periodically (new CVEs are published daily)
+  dbRepository: ghcr.io/aquasecurity/trivy-db:2
+  javaDbRepository: ghcr.io/aquasecurity/trivy-java-db:1
+
+## Operator configuration
+operator:
+  ## Replicas — 1 is fine for homelab; use 2+ for production HA
+  replicas: 1
+
+  ## Scan job timeout (how long to wait for a single image scan)
+  scanJobTimeout: 5m
+
+  ## Resource limits for the operator pod
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  ## Log verbosity (0 = info, 1 = debug)
+  logDevMode: false
+
+## Scanning configuration
+## These settings control WHAT gets scanned and HOW OFTEN
+scanJob:
+  ## Scan schedule (cron format) — daily at 2 AM
+  ## VulnerabilityReports are also generated on workload creation/update (event-driven)
+  scanJobsConcurrentLimit: 3
+  scanJobsRetryDelay: 30s
+
+  ## Resource limits for scan jobs (each scan runs in a separate Job pod)
+  podTemplateContainerSecurityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    privileged: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 1000
+
+  ## Resource requests/limits for each scan job
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+
+## VulnerabilityReport settings
+vulnerabilityReports:
+  ## Scanner type (Trivy is the default and most comprehensive)
+  scanner: Trivy
+
+  ## Scan all workload types
+  scanners:
+    - vulnerabilityReports
+
+## ConfigAuditReport settings (K8s manifest security best practices)
+## This generates reports for misconfigurations like missing security contexts,
+## privileged containers, etc. — overlaps with Gatekeeper but provides different insights.
+configAuditReports:
+  scanner: Trivy
+  scanners:
+    - configAuditReports
+
+## ExposedSecretReport settings (scans for hardcoded secrets in images)
+exposedSecretReports:
+  scanner: Trivy
+  scanners:
+    - exposedSecretReports
+
+## RBAC Assessment (analyzes ClusterRole/Role permissions)
+rbacAssessmentReports:
+  scanner: Trivy
+  scanners:
+    - rbacAssessmentReports
+
+## Compliance reports (CIS Kubernetes Benchmark, NSA/CISA K8s Hardening Guide, etc.)
+## Disabled for now — enable if you want compliance framework mapping
+compliance:
+  ## Set to true to enable compliance reporting
+  ## This generates ClusterComplianceReport CRDs mapping findings to frameworks
+  failEntriesLimit: 10
+  reportType: summary
+
+## Target workloads — scan all namespaces except platform namespaces
+## (We don't want to scan Argo CD, Crossplane, Gatekeeper, etc.)
+excludeNamespaces: "kube-system,kube-node-lease,kube-public,argocd,crossplane-system,gatekeeper-system,trivy-system,external-secrets,monitoring"
+
+## Target workload types
+targetWorkloads: "pod,replicaset,replicationcontroller,statefulset,daemonset,cronjob,job"
+
+## Prometheus metrics (kube-prometheus-stack scrapes these via ServiceMonitor)
+serviceMonitor:
+  enabled: false  # Set to true after kube-prometheus-stack is installed (task #35)
+  labels:
+    release: prometheus
+
+## Trivy image configuration (use official Aqua Security images)
+image:
+  registry: ghcr.io
+  repository: aquasecurity/trivy
+  tag: 0.58.1  # Pin to specific version for stability
+
+## Node affinity/tolerations — not needed for homelab single node pool
+nodeSelector: {}
+tolerations: []
+affinity: {}
