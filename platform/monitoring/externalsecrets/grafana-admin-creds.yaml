@@ -30,10 +30,9 @@ spec:
             source: "(.*)"
             target: "username"
     - extract:
-        conversionStrategy: Default
+        conversionStrategy: Default  
         decodingStrategy: None
         key: grafana-admin-password
-        metadataPolicy: None
       rewrite:
         - regexp:
             source: "(.*)"
