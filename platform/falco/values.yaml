@@ -117,21 +117,9 @@ customRules:
     ## IMPORTANT: Do NOT redefine macros/lists that exist in Falco's default rules!
     ## Redefinitions break default rules. Only define NEW macros with homelab_ prefix.
 
-    ## Macro: Production workload namespaces (exclude platform namespaces)
-    ## This is a NEW macro, not a redefinition
-    - macro: homelab_homelab_production_namespace
-      condition: >
-        (k8s.ns.name exists and
-         k8s.ns.name != "kube-system" and
-         k8s.ns.name != "kube-public" and
-         k8s.ns.name != "kube-node-lease" and
-         k8s.ns.name != "argocd" and
-         k8s.ns.name != "crossplane-system" and
-         k8s.ns.name != "gatekeeper-system" and
-         k8s.ns.name != "trivy-system" and
-         k8s.ns.name != "falco" and
-         k8s.ns.name != "external-secrets" and
-         k8s.ns.name != "monitoring")
+    ## Macro: Monitor all namespaces except kube-system (start noisy, tune later)
+    - macro: homelab_monitored_namespace
+      condition: (k8s.ns.name != "kube-system")
 
     ## Macro: Shell processes using Falco's default shell_binaries list
     - macro: homelab_shell_procs
@@ -153,7 +141,7 @@ customRules:
       condition: >
         spawned_process and
         container and
-        homelab_production_namespace and
+        homelab_monitored_namespace and
         homelab_shell_procs and
         proc.pname exists and
         proc.pname != "sh" and
@@ -189,7 +177,7 @@ customRules:
       condition: >
         open_read and
         container and
-        homelab_production_namespace and
+        homelab_monitored_namespace and
         homelab_sensitive_file_read and
         not proc.name in (trusted_system_binaries)
       output: >
@@ -223,7 +211,7 @@ customRules:
       condition: >
         open_write and
         container and
-        homelab_production_namespace and
+        homelab_monitored_namespace and
         (fd.name startswith "/bin/" or
          fd.name startswith "/usr/bin/" or
          fd.name startswith "/usr/local/bin/" or
@@ -261,7 +249,7 @@ customRules:
       condition: >
         outbound and
         container and
-        homelab_production_namespace and
+        homelab_monitored_namespace and
         fd.sport in (suspicious_outbound_ports)
       output: >
         Suspicious outbound connection from container
