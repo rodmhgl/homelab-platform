@@ -16,7 +16,7 @@ AKS Home Lab Internal Developer Platform (IDP) mono-repo.
 | `platform/gatekeeper-constraints/` | ✅ Complete | 8 Constraints with enforcementAction: deny (wave 6) |
 | `platform/platform-api/` | ✅ Complete | Platform API Kubernetes manifests (Deployment, Service, RBAC, application.yaml) |
 | `platform/external-secrets/` | ✅ Complete | ESO Helm install + ClusterSecretStore (Workload Identity, wave 3.5). Placeholders require Terraform outputs. |
-| `platform/trivy-operator/` | ⬜ Pending | CVE scanning |
+| `platform/trivy-operator/` | ✅ Complete | Trivy Operator v0.32.0 Helm install + values.yaml (wave 7). Continuous CVE scanning with VulnerabilityReport CRDs. |
 | `platform/falco/` | ⬜ Pending | Runtime security + Falcosidekick |
 | `platform/monitoring/` | ⬜ Pending | kube-prometheus-stack + Grafana dashboards |
 | `platform/kagent/` | ⬜ Pending | Natural language cluster interaction |

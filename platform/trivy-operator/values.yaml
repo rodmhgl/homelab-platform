@@ -119,12 +119,6 @@ serviceMonitor:
   labels:
     release: prometheus
 
-## Trivy image configuration (use official Aqua Security images)
-image:
-  registry: ghcr.io
-  repository: aquasecurity/trivy
-  tag: 0.58.1  # Pin to specific version for stability
-
 ## Node affinity/tolerations — not needed for homelab single node pool
 nodeSelector: {}
 tolerations: []
