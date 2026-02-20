@@ -29,7 +29,7 @@ serviceAccount:
     ## To retrieve: terraform output -raw eso_identity_client_id
     ## This annotation triggers the Azure Workload Identity webhook to mount
     ## the OIDC token at /var/run/secrets/azure/tokens/azure-identity-token
-    azure.workload.identity/client-id: "REPLACE_WITH_ESO_IDENTITY_CLIENT_ID"
+    azure.workload.identity/client-id: "cd3c8812-31ab-4c68-a74d-ff1a6a9de5f2"
 
 ## Pod labels: required by Azure Workload Identity webhook for token injection.
 podLabels:
