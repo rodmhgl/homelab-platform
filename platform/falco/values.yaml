@@ -104,24 +104,199 @@ podSecurityContext: {}
 containerSecurityContext: {}
 
 ## Custom rules — loaded via customRules
-## In v8.0.0, custom rules are defined inline and mounted automatically by the chart
-## The chart creates a ConfigMap and mounts it into /etc/falco/rules.d/
-## We'll load our custom rules from the separate ConfigMap created by Argo CD
-customRules: {}
-  # We use a separate ConfigMap (falco-custom-rules) managed by Argo CD
-  # and mount it via extraVolumes/extraVolumeMounts below
+## In v8.0.0, custom rules are defined inline and the chart automatically
+## creates a ConfigMap and mounts it into /etc/falco/rules.d/
+##
+## IMPORTANT: We define rules inline here (not via separate ConfigMap)
+## because the Helm chart v8.0.0 doesn't support extraVolumes/extraVolumeMounts
+customRules:
+  rules-homelab.yaml: |-
+    ##############################################################################
+    ## Custom Macros and Lists
+    ##############################################################################
 
-## Extra volumes for custom rules
-## Mount the ConfigMap created by Argo CD from custom-rules.yaml
-extraVolumes:
-  - name: custom-rules
-    configMap:
-      name: falco-custom-rules
+    ## List of shell binaries we want to detect
+    - list: shell_binaries
+      items: [bash, sh, zsh, fish, csh, ksh, tcsh, dash]
 
-extraVolumeMounts:
-  - name: custom-rules
-    mountPath: /etc/falco/rules.d
-    readOnly: true
+    ## List of sensitive files that should rarely be accessed
+    - list: sensitive_files
+      items:
+        - /etc/shadow
+        - /etc/sudoers
+        - /etc/pam.d
+        - /etc/security
+        - /root/.ssh
+        - /root/.aws
+        - /root/.kube/config
+
+    ## Macro: Container is running (not just spawned)
+    - macro: container
+      condition: (container.id != host)
+
+    ## Macro: Production workload namespaces (exclude platform namespaces)
+    - macro: production_namespace
+      condition: >
+        (k8s.ns.name exists and
+         k8s.ns.name != "kube-system" and
+         k8s.ns.name != "kube-public" and
+         k8s.ns.name != "kube-node-lease" and
+         k8s.ns.name != "argocd" and
+         k8s.ns.name != "crossplane-system" and
+         k8s.ns.name != "gatekeeper-system" and
+         k8s.ns.name != "trivy-system" and
+         k8s.ns.name != "falco" and
+         k8s.ns.name != "external-secrets" and
+         k8s.ns.name != "monitoring")
+
+    ## Macro: Interactive shell (spawned by user, not init/systemd)
+    - macro: shell_procs
+      condition: (proc.name in (shell_binaries))
+
+    ## Macro: Sensitive file read
+    - macro: sensitive_file_read
+      condition: (fd.name in (sensitive_files) and evt.is_open_read=true)
+
+    ##############################################################################
+    ## Rule 1: Unexpected Shell in Container
+    ##############################################################################
+    - rule: Unexpected Shell Spawned in Container
+      desc: >
+        A shell was spawned inside a production container. This may indicate
+        an attacker gaining interactive access, kubectl exec abuse, or a
+        misconfigured application health check. Investigate the process tree
+        and parent command to determine legitimacy.
+      condition: >
+        spawned_process and
+        container and
+        production_namespace and
+        shell_procs and
+        proc.pname exists and
+        proc.pname != "sh" and
+        proc.pname != "bash" and
+        proc.aname[2] != "docker"
+      output: >
+        Shell spawned in production container
+        (container=%container.name
+         namespace=%k8s.ns.name
+         pod=%k8s.pod.name
+         shell=%proc.name
+         parent=%proc.pname
+         cmdline=%proc.cmdline
+         user=%user.name
+         uid=%user.uid
+         image=%container.image.repository)
+      priority: WARNING
+      tags:
+        - container
+        - shell
+        - mitre_execution
+        - runtime_security
+
+    ##############################################################################
+    ## Rule 2: Sensitive File Read
+    ##############################################################################
+    - rule: Sensitive File Read in Container
+      desc: >
+        A process inside a container attempted to read a sensitive system file
+        (e.g., /etc/shadow, SSH keys, Kubernetes config). This is highly
+        suspicious in containerized environments and may indicate credential
+        theft or privilege escalation.
+      condition: >
+        open_read and
+        container and
+        production_namespace and
+        sensitive_file_read and
+        not proc.name in (trusted_system_binaries)
+      output: >
+        Sensitive file read detected in container
+        (file=%fd.name
+         container=%container.name
+         namespace=%k8s.ns.name
+         pod=%k8s.pod.name
+         process=%proc.name
+         cmdline=%proc.cmdline
+         user=%user.name
+         uid=%user.uid
+         parent=%proc.pname
+         image=%container.image.repository)
+      priority: ERROR
+      tags:
+        - container
+        - credential_access
+        - mitre_credential_access
+        - runtime_security
+        - sensitive_file
+
+    ##############################################################################
+    ## Rule 3: Container Drift Detection
+    ##############################################################################
+    - rule: Binary Written to Container Filesystem
+      desc: >
+        A binary was written to a container's filesystem after it started.
+        Containers should be immutable. This may indicate malware installation,
+        cryptocurrency mining, or a misconfigured CI/CD pipeline.
+      condition: >
+        open_write and
+        container and
+        production_namespace and
+        (fd.name startswith "/bin/" or
+         fd.name startswith "/usr/bin/" or
+         fd.name startswith "/usr/local/bin/" or
+         fd.name startswith "/sbin/" or
+         fd.name startswith "/usr/sbin/")
+      output: >
+        Binary written to container filesystem
+        (file=%fd.name
+         container=%container.name
+         namespace=%k8s.ns.name
+         pod=%k8s.pod.name
+         process=%proc.name
+         cmdline=%proc.cmdline
+         user=%user.name
+         parent=%proc.pname
+         image=%container.image.repository)
+      priority: WARNING
+      tags:
+        - container
+        - drift
+        - mitre_persistence
+        - runtime_security
+
+    ##############################################################################
+    ## Rule 4: Unexpected Network Connection
+    ##############################################################################
+    - list: suspicious_outbound_ports
+      items: [6667, 3333, 8333, 9001, 9030]
+
+    - rule: Unexpected Network Connection from Container
+      desc: >
+        A container established an outbound network connection to a suspicious port.
+        This may indicate command-and-control traffic, cryptocurrency mining,
+        or data exfiltration.
+      condition: >
+        outbound and
+        container and
+        production_namespace and
+        fd.sport in (suspicious_outbound_ports)
+      output: >
+        Suspicious outbound connection from container
+        (port=%fd.sport
+         dest_ip=%fd.rip
+         dest_port=%fd.rport
+         container=%container.name
+         namespace=%k8s.ns.name
+         pod=%k8s.pod.name
+         process=%proc.name
+         cmdline=%proc.cmdline
+         user=%user.name
+         image=%container.image.repository)
+      priority: WARNING
+      tags:
+        - container
+        - network
+        - mitre_command_and_control
+        - runtime_security
 
 ## Falcosidekick integration
 ## Falcosidekick is deployed separately (task #34) and receives events from Falco
