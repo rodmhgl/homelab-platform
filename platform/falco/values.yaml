@@ -150,11 +150,11 @@ customRules:
          k8s.ns.name != "monitoring")
 
     ## Macro: Interactive shell (spawned by user, not init/systemd)
-    - macro: shell_procs
+    - macro: homelab_shell_procs
       condition: (proc.name in (shell_binaries))
 
-    ## Macro: Sensitive file read
-    - macro: sensitive_file_read
+    ## Macro: Sensitive file read (homelab-specific)
+    - macro: homelab_sensitive_file_read
       condition: (fd.name in (sensitive_files) and evt.is_open_read=true)
 
     ##############################################################################
@@ -170,7 +170,7 @@ customRules:
         spawned_process and
         container and
         production_namespace and
-        shell_procs and
+        homelab_shell_procs and
         proc.pname exists and
         proc.pname != "sh" and
         proc.pname != "bash" and
@@ -206,7 +206,7 @@ customRules:
         open_read and
         container and
         production_namespace and
-        sensitive_file_read and
+        homelab_sensitive_file_read and
         not proc.name in (trusted_system_binaries)
       output: >
         Sensitive file read detected in container
