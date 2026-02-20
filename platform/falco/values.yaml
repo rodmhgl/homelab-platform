@@ -55,25 +55,25 @@ falco:
   ## Buffered outputs (improves performance by batching events)
   buffered_outputs: true
 
-  ## HTTP output disabled (we use Falcosidekick instead for routing)
+  ## HTTP output — sends events to Falcosidekick (fallback from gRPC due to TLS issues)
+  ## Falcosidekick listens on falcosidekick.falco.svc.cluster.local:2801
   http_output:
-    enabled: false
+    enabled: true
+    url: "http://falcosidekick.falco.svc.cluster.local:2801"
 
   ## Program output disabled (we use Falcosidekick for webhook delivery)
   program_output:
     enabled: false
 
-  ## gRPC server — listens on port 5060 for Falcosidekick connections
-  ## Falcosidekick autodiscovers this via K8s Service (falco.falco.svc.cluster.local:5060)
+  ## gRPC disabled due to TLS certificate issues
+  ## The gRPC server in Falco v8.0.0 requires TLS certs which aren't auto-generated
+  ## HTTP output is simpler and works without cert configuration
   grpc:
-    enabled: true
-    bind_address: "0.0.0.0:5060"
-    threadiness: 0  # Auto-detect based on CPU count
+    enabled: false
 
-  ## gRPC output — sends events to Falcosidekick
-  ## Falcosidekick listens on the gRPC server above
+  ## gRPC output disabled (using HTTP output instead)
   grpc_output:
-    enabled: true
+    enabled: false
 
 ## Resource limits for Falco pods
 resources:
