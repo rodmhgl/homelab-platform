@@ -18,12 +18,13 @@ AKS Home Lab Internal Developer Platform (IDP) mono-repo.
 | `platform/external-secrets/` | ✅ Complete | ESO Helm install + ClusterSecretStore (Workload Identity, wave 3.5). Platform API ExternalSecret resources deployed. Placeholders require Terraform outputs. |
 | `platform/trivy-operator/` | ✅ Complete | Trivy Operator v0.32.0 Helm install + values.yaml (wave 7). Continuous CVE scanning with VulnerabilityReport CRDs. |
 | `platform/monitoring/` | ✅ Complete | kube-prometheus-stack Helm install (Prometheus + Alertmanager + Grafana, wave 8). Grafana admin credentials via ESO from bootstrap Key Vault. Alertmanager pre-configured for HolmesGPT webhook. Custom scrape configs for Crossplane, Gatekeeper, Trivy, Platform API. |
-| `platform/falco/` | ✅ Complete | Falco v8.0.0 Helm install + 4 custom rules (wave 8). Modern eBPF driver for runtime security monitoring. Custom rules: shell spawning, sensitive file access, container drift, suspicious network connections. Monitors all namespaces except kube-system. |
+| `platform/falco/` | ✅ Complete | Falco v8.0.0 Helm install + 4 custom rules (wave 8). Modern eBPF driver for runtime security monitoring. Custom rules: shell spawning, sensitive file access, container drift, suspicious network connections. Monitors all namespaces except kube-system. HTTP output enabled to Falcosidekick. |
+| `platform/falcosidekick/` | ✅ Complete | Falcosidekick v0.10.0 Helm install (wave 9). Routes Falco events to Platform API webhook. Prometheus metrics enabled via ServiceMonitor. |
 | `platform/kagent/` | ⬜ Pending | Natural language cluster interaction |
 | `platform/holmesgpt/` | ⬜ Pending | AI-powered root cause analysis |
 | `scaffolds/go-service/` | ✅ Complete | Copier template — 23 production-ready template files (copier.yml, main.go, Dockerfile, k8s/ manifests, Crossplane Claims, CI/CD pipeline, Makefile, golangci-lint, Dependabot, CODEOWNERS). Generates Gatekeeper-compliant apps with optional Azure infrastructure. |
 | `scaffolds/python-service/` | ⬜ Pending | Copier template (not started) |
-| `api/` | ✅ Complete | Platform API — Go + Chi router, structured logging, graceful shutdown. Endpoints: scaffold (#51), Argo CD apps (#42, #43, #89), compliance (#48), infra full CRUD (#44, #45, #46, #47). Complete GitOps infrastructure management (list/get/create/delete) with three-layer validation. RBAC configured. Secrets via ESO. Argo CD integration requires one-time token bootstrap (see `platform/platform-api/setup-argocd-token.sh`). |
+| `api/` | ✅ Complete | Platform API — Go + Chi router, structured logging, graceful shutdown. Endpoints: scaffold (#51), Argo CD apps (#42, #43, #89), compliance (#48), infra full CRUD (#44, #45, #46, #47), Falco webhook (#49). Complete GitOps infrastructure management. RBAC configured. Secrets via ESO. Event store (in-memory, 1000 events) for Falco runtime security events. Argo CD integration requires one-time token bootstrap (see `platform/platform-api/setup-argocd-token.sh`). |
 | `cli/` | 🔨 In Progress | `rdp` CLI — Root command, config management (init/view/set), version, `status` (#66), and `infra list/status` (#68) complete. Next: interactive create/delete commands (#69-#71), apps/compliance/secrets/investigate/ask commands. |
 
 ## Bootstrap
@@ -46,7 +47,7 @@ Argo CD (platform/argocd/)  — GitOps control plane; App of Apps pattern
 Crossplane                  — self-service app infra (storage, key vaults) via Claims
 Gatekeeper                  — admission policy for apps AND Crossplane Claims
 ESO                         — platform secrets from bootstrap KV via Workload Identity
-Trivy + Falco               — CVE scanning + runtime security
+Trivy + Falco + Falcosidekick — CVE scanning + runtime security + event routing
 Platform API (api/)         — Go + Chi; all CLI/UI operations go through here
 rdp CLI (cli/)              — Go + Cobra; thin client over Platform API
 ```

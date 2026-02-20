@@ -6,6 +6,86 @@ All notable changes to the homelab-platform project.
 
 ### Added
 
+**2026-02-20: Falcosidekick Integration (Event Routing)**
+
+- ✅ **Falcosidekick Helm Install** (`platform/falcosidekick/application.yaml`)
+  - Deployed Falcosidekick v0.10.0 via Helm chart
+  - Wave 9 positioning (after Falco wave 8, before Platform API wave 10)
+  - Routes Falco security events to Platform API webhook endpoint
+  - Chart source: `https://falcosecurity.github.io/charts`
+  - Argo CD Application with ServerSideApply and retry backoff
+
+- ✅ **Falcosidekick Configuration** (`platform/falcosidekick/values.yaml`)
+  - Webhook output: `http://platform-api.platform.svc.cluster.local/api/v1/webhooks/falco`
+  - Resource limits: 200m CPU / 256Mi memory (homelab-sized)
+  - ServiceMonitor enabled for Prometheus metrics (events processed, outputs sent, errors)
+  - No authentication (internal cluster traffic only; future: HMAC signature validation)
+  - Debug mode disabled (enable for troubleshooting)
+
+- ✅ **Platform API Webhook Handler** (`api/internal/webhooks/falco.go`)
+  - New package: `api/internal/webhooks/` with types and handler
+  - `POST /api/v1/webhooks/falco` endpoint receives Falcosidekick events
+  - Parses `FalcoWebhookPayload` (UUID, priority, rule, output, output_fields, time)
+  - Extracts K8s metadata (namespace, pod) from output_fields
+  - Converts to `SecurityEvent` and persists to EventStore
+
+- ✅ **Event Storage Layer** (`api/internal/compliance/events.go`)
+  - New `EventStore` interface with in-memory implementation
+  - Circular buffer (max 1000 events) — oldest events dropped when full
+  - Filter support: namespace, severity, rule name, timestamp (since), limit
+  - Thread-safe with sync.RWMutex for concurrent access
+  - **Production note:** Replace with shared persistence (PostgreSQL/Redis) for multi-replica deployments
+
+- ✅ **Compliance API Updates** (`api/internal/compliance/handler.go`)
+  - `HandleEvents()` implemented — replaces placeholder TODO
+  - Query parameters: namespace, severity, rule, since (RFC3339), limit (default 100)
+  - `HandleSummary()` updated — compliance score now includes Falco events
+  - Compliance scoring: Critical events × 15, Error events × 8 (heavier than CVEs)
+  - Rationale: Active threats (Falco) > Potential vulnerabilities (CVEs)
+
+- ✅ **Falco HTTP Output** (`platform/falco/values.yaml`)
+  - Enabled HTTP output to Falcosidekick: `http://falcosidekick.falco.svc.cluster.local:2801`
+  - gRPC output disabled (TLS certificate requirements in Falco v8.0.0)
+  - Fallback strategy documented: HTTP simpler than gRPC for internal cluster communication
+
+- ✅ **Platform API v0.1.6** (Docker image)
+  - Built with webhook code and EventStore implementation
+  - Pushed to ACR: `homelabplatformacr.azurecr.io/platform-api:v0.1.6`
+  - Updated deployment.yaml to use new image version
+  - Main.go wired: EventStore → ComplianceHandler + WebhookHandler
+
+- ✅ **Integration Architecture Complete**
+  ```
+  Falco (DaemonSet, eBPF)
+    → HTTP output
+    → Falcosidekick (Deployment, wave 9)
+    → Webhook POST
+    → Platform API /api/v1/webhooks/falco
+    → EventStore (in-memory, 1000 events)
+    → GET /api/v1/compliance/events (query endpoint)
+  ```
+
+- ✅ **Live Verification** (as of 2026-02-20 20:58 UTC)
+  - Falcosidekick delivering webhooks: `POST OK (200)` responses
+  - Platform API receiving events: 17+ events captured
+  - Event types: Shell spawning (WARNING), K8s API access (NOTICE)
+  - Namespaces monitored: argocd, monitoring, platform (excluding kube-system)
+  - Compliance score calculation includes Falco events in scoring formula
+
+**Implementation Notes:**
+- DNS issue resolved: `platform-api.platform.svc.cluster.local` (not `platform-api.platform-api`)
+- Service port corrected: Port 80 (not pod port 8080) for webhook URL
+- Config updates require manual pod restart (Helm values don't auto-rollout)
+- gRPC → HTTP fallback due to TLS cert auto-generation gap in Falco v8.0.0
+
+**Completes:**
+- Task #34 — Falcosidekick integration
+- Task #49 — POST /api/v1/webhooks/falco (Argo CD webhook still pending)
+
+**Unblocks:**
+- Task #84 — Security Events timeline in Portal UI (event data now available)
+- Task #73 — CLI `rdp compliance events` command (API endpoint ready)
+
 **2026-02-20: Falco Runtime Security**
 
 - ✅ **Falco Helm Install** (`platform/falco/application.yaml`)
@@ -227,17 +307,20 @@ All notable changes to the homelab-platform project.
 - ✅ Gatekeeper (8 ConstraintTemplates + 8 Constraints)
 - ✅ External Secrets Operator (with bootstrap Key Vault)
 - ✅ Trivy Operator (CVE scanning)
+- ✅ Falco (runtime security monitoring)
+- ✅ Falcosidekick (event routing to Platform API)
 - ✅ kube-prometheus-stack (monitoring)
 - ✅ Platform API Deployment + RBAC
 
 **Platform API Endpoints:**
 - ✅ Scaffold (`POST /api/v1/scaffold`)
 - ✅ Argo CD Apps (`GET /api/v1/apps`, `GET /api/v1/apps/{name}`, `POST /api/v1/apps/{name}/sync`) — requires one-time token bootstrap
-- ✅ Compliance (`GET /api/v1/compliance/summary|policies|violations|vulnerabilities`)
+- ✅ Compliance (`GET /api/v1/compliance/summary|policies|violations|vulnerabilities|events`)
 - ✅ Infrastructure List (`GET /api/v1/infra`, `GET /api/v1/infra/storage`, `GET /api/v1/infra/vaults`)
 - ✅ Infrastructure Query (`GET /api/v1/infra/{kind}/{name}`)
 - ✅ Infrastructure Create (`POST /api/v1/infra`)
 - ✅ Infrastructure Delete (`DELETE /api/v1/infra/{kind}/{name}`)
+- ✅ Falco Webhook (`POST /api/v1/webhooks/falco`)
 
 **Scaffolds:**
 - ✅ go-service (23 production-ready template files)
@@ -250,7 +333,6 @@ All notable changes to the homelab-platform project.
 ### Pending Components
 
 **Platform Infrastructure:**
-- ⬜ Falco + Falcosidekick
 - ⬜ kagent
 - ⬜ HolmesGPT
 
@@ -258,7 +340,7 @@ All notable changes to the homelab-platform project.
 - ⬜ Secrets (`GET /api/v1/secrets/{namespace}`)
 - ⬜ Investigation (`POST /api/v1/investigate`, `GET /api/v1/investigate/{id}`)
 - ⬜ AI Agent (`POST /api/v1/agent/ask`)
-- ⬜ Webhooks (`POST /api/v1/webhooks/falco`, `POST /api/v1/webhooks/argocd`)
+- ⬜ Argo CD Webhook (`POST /api/v1/webhooks/argocd`)
 
 **Scaffolds:**
 - ⬜ python-service

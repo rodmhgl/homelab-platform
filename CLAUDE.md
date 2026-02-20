@@ -19,11 +19,12 @@ AKS Home Lab Internal Developer Platform (IDP) mono-repo.
 | `platform/external-secrets/` | ✅ Phase C — ESO Helm install (v0.11.0) + ClusterSecretStore (Workload Identity, wave 3.5). Platform API ExternalSecret resources deployed. Requires Terraform output placeholders. |
 | `platform/trivy-operator/` | ✅ Phase C — Trivy Operator Helm install (v0.32.0) + values.yaml (wave 7). Continuous CVE scanning with VulnerabilityReport CRDs. |
 | `platform/platform-api/` | ✅ Phase D — Platform API Deployment + Service + RBAC (wave 10). Secrets managed via ESO ExternalSecret (github-pat, openai-api-key, argocd-token). |
-| `platform/falco/` | ✅ Phase C — Falco Helm install (v8.0.0, wave 8) + 4 custom rules. Modern eBPF driver. Runtime security monitoring for all namespaces except kube-system. |
-| `platform/` (remaining) | ⬜ Falcosidekick, kagent, HolmesGPT |
+| `platform/falco/` | ✅ Phase C — Falco Helm install (v8.0.0, wave 8) + 4 custom rules. Modern eBPF driver. HTTP output to Falcosidekick. Runtime security monitoring for all namespaces except kube-system. |
+| `platform/falcosidekick/` | ✅ Phase C — Falcosidekick Helm install (v0.10.0, wave 9). Webhook output to Platform API. ServiceMonitor enabled for Prometheus. |
+| `platform/` (remaining) | ⬜ kagent, HolmesGPT |
 | `scaffolds/go-service/` | ✅ Copier template — complete (23 template files: copier.yml, main.go, Dockerfile, k8s/, claims/, CI/CD, Makefile, supporting files) |
 | `scaffolds/python-service/` | ⬜ Copier template (not started) |
-| `api/` | ✅ Platform API (Go + Chi) — scaffold (#51), Argo CD (#42, #43, #89), compliance (#48), infra complete CRUD (#44-#47). Full GitOps infrastructure management (list/get/create/delete) with three-layer validation. Secrets via ESO (#40, #87). RBAC configured. Argo CD integration complete — service account + RBAC via GitOps (values.yaml), token via one-time bootstrap script. |
+| `api/` | ✅ Platform API (Go + Chi) — scaffold (#51), Argo CD (#42, #43, #89), compliance (#48), infra complete CRUD (#44-#47), Falco webhook (#49). Full GitOps infrastructure management (list/get/create/delete) with three-layer validation. Secrets via ESO (#40, #87). RBAC configured. Event store for Falco runtime security events (in-memory, 1000 events). Argo CD integration complete — service account + RBAC via GitOps (values.yaml), token via one-time bootstrap script. |
 | `cli/` | 🔨 rdp CLI (Go + Cobra) — Root command, config management, version, `rdp status` (#66), `rdp infra list/status` (#68) complete. Pending: interactive create/delete (#69-#71), apps (#67), compliance (#73), secrets (#74), investigate (#75), ask (#76). |
 
 ## Terraform (`infra/`)
@@ -177,17 +178,45 @@ Compositions use `function-patch-and-transform` in **Pipeline mode** — not the
 
 **Namespace filtering:** Monitors all namespaces **except kube-system**. This is intentionally broad ("start noisy, tune later"). The `homelab_monitored_namespace` macro can be refined later based on actual usage patterns.
 
-**Priority threshold:** `warning` — only WARNING, ERROR, and CRITICAL events are logged. This filters out NOTICE-level default Falco rules (e.g., normal shell usage) to reduce noise.
+**Priority threshold:** `notice` — all events at NOTICE level and above are captured. This includes both custom rules (WARNING/ERROR) and default Falco rules.
 
-**gRPC output:** Currently disabled to avoid TLS certificate errors. Will be configured when Falcosidekick (Task #34) is deployed to route events to Platform API webhook.
+**Output configuration:** HTTP output enabled to Falcosidekick (`http://falcosidekick.falco.svc.cluster.local:2801`). gRPC output disabled due to TLS certificate requirements in Falco v8.0.0.
 
-**Integration points:**
-- Events will route to Platform API via Falcosidekick → `POST /api/v1/webhooks/falco` (Task #49)
-- Platform API `/api/v1/compliance/events` aggregates Falco events (already scaffolded in Task #48)
+**Integration architecture:**
+```
+Falco (DaemonSet)
+  → HTTP output
+  → Falcosidekick (Deployment, wave 9)
+  → Webhook (http://platform-api.platform/api/v1/webhooks/falco)
+  → Platform API EventStore (in-memory, 1000 events)
+  → GET /api/v1/compliance/events endpoint
+```
 
 **Common issues:**
 - **Macro name conflicts:** If custom rules redefine Falco's default macros, the default rules will fail compilation with `LOAD_ERR_COMPILE_CONDITION` errors
 - **Chart version compatibility:** Falco v8.0.0 has different schema than v4.x — `extraVolumes`/`extraVolumeMounts` are NOT supported at root level; use `customRules:` inline instead
+- **gRPC vs HTTP:** Falco's gRPC server requires TLS certs that aren't auto-generated; HTTP output is simpler and works without cert configuration
+
+### Falcosidekick — Event Routing (wave 9)
+
+**Chart version:** falcosecurity/falcosidekick 0.10.0
+
+**Purpose:** Routes Falco security events to external systems. Acts as the bridge between Falco and the Platform API.
+
+**Configuration:**
+- **Webhook output:** `http://platform-api.platform.svc.cluster.local/api/v1/webhooks/falco` (internal cluster traffic, no authentication)
+- **Resource limits:** 200m CPU / 256Mi memory (homelab-sized)
+- **ServiceMonitor:** Enabled for Prometheus metrics (events processed, outputs sent, errors)
+
+**Key architectural decisions:**
+- Service port 80 (not pod port 8080) — Falcosidekick connects via K8s Service
+- No webhook authentication — internal cluster traffic only; future enhancement: HMAC signature validation
+- Modular design — Falcosidekick can route to multiple outputs (Slack, PagerDuty) without touching Falco configuration
+
+**Troubleshooting:**
+- DNS name must match Service name (`platform-api.platform.svc.cluster.local`, not `platform-api.platform-api`)
+- Falcosidekick logs show webhook delivery status (`POST OK (200)` or errors)
+- Config updates require pod restart (Helm values don't trigger automatic rollout)
 
 ## Platform API (`api/`)
 
@@ -204,23 +233,32 @@ Compositions use `function-patch-and-transform` in **Pipeline mode** — not the
 - `GET /health`, `GET /ready` — Health checks
 - `POST /api/v1/scaffold` — ✅ (#51) Copier template execution, GitHub repo creation, Argo CD onboarding
 - `GET /api/v1/apps`, `GET /api/v1/apps/{name}`, `POST /api/v1/apps/{name}/sync` — ✅ (#42, #43) Argo CD app management
-- `GET /api/v1/compliance/*` — ✅ (#48) Aggregated compliance view (Gatekeeper + Trivy)
+- `GET /api/v1/compliance/*` — ✅ (#48) Aggregated compliance view (Gatekeeper + Trivy + Falco)
 - `GET /api/v1/infra`, `GET /api/v1/infra/storage`, `GET /api/v1/infra/vaults` — ✅ (#44) List Claims
 - `GET /api/v1/infra/{kind}/{name}` — ✅ (#45) Crossplane resource tree query with events
 - `POST /api/v1/infra` — ✅ (#46) Create Claim via GitOps (three-layer validation: request → Gatekeeper → GitHub)
+- `POST /api/v1/webhooks/falco` — ✅ (#49) Falco event webhook receiver
+- `GET /api/v1/compliance/events` — ✅ (#48) Query Falco security events with filtering
 
 **Pending endpoints:**
 
 - `/api/v1/secrets/*` — ExternalSecrets + connection secrets (#50)
 - `/api/v1/investigate/*` — HolmesGPT integration (#52)
 - `/api/v1/agent/ask` — kagent CRD-based interaction (#53)
-- `/api/v1/webhooks/*` — Falco and Argo CD webhooks (#49)
+- `/api/v1/webhooks/argocd` — Argo CD webhook (#49)
 
 **Key architectural patterns:**
 
 - GitOps for infrastructure: `/api/v1/infra` endpoints commit Claim YAML to app repos, not direct cluster mutations
-- Falco events arrive at `POST /api/v1/webhooks/falco` via Falcosidekick
+- Falco integration: Events arrive at `POST /api/v1/webhooks/falco` via Falcosidekick, stored in EventStore (in-memory circular buffer, 1000 events), queryable via `GET /api/v1/compliance/events`
+- Compliance scoring: Includes Falco events — Critical events × 15, Error events × 8 (heavier than CVEs because they indicate active threats vs potential vulnerabilities)
 - kagent interaction is CRD-based: Platform API creates `Agent`/`Task` resources, not direct HTTP to an LLM
+
+**Event storage notes:**
+- EventStore is in-memory per-pod (not shared across replicas)
+- Circular buffer drops oldest events when full (max 1000)
+- For production: replace with shared persistence (PostgreSQL/Redis/etcd)
+- Query filters: namespace, severity, rule name, timestamp (since), limit
 
 ## CLI (`cli/`)
 
