@@ -22,7 +22,7 @@ AKS Home Lab Internal Developer Platform (IDP) mono-repo.
 | `platform/` (remaining) | ⬜ Falco, monitoring, kagent, HolmesGPT |
 | `scaffolds/go-service/` | ✅ Copier template — complete (23 template files: copier.yml, main.go, Dockerfile, k8s/, claims/, CI/CD, Makefile, supporting files) |
 | `scaffolds/python-service/` | ⬜ Copier template (not started) |
-| `api/` | ✅ Platform API (Go + Chi) — scaffold (#51), Argo CD (#42, #43), compliance (#48), infra list/query/create (#44, #45, #46). GitOps Claim creation with three-layer validation. Secrets via ESO (#40, #87). RBAC configured. Known issue: `/api/v1/apps` endpoint needs Argo CD token configuration (#89). |
+| `api/` | ✅ Platform API (Go + Chi) — scaffold (#51), Argo CD (#42, #43, #89), compliance (#48), infra list/query/create (#44, #45, #46). GitOps Claim creation with three-layer validation. Secrets via ESO (#40, #87). RBAC configured. Argo CD integration complete — service account + RBAC via GitOps (values.yaml), token via one-time bootstrap script. |
 | `cli/` | 🔨 rdp CLI (Go + Cobra) — Root command, config management, version command complete. `rdp status` command (#66) ✅ aggregates platform health from API endpoints. |
 
 ## Terraform (`infra/`)
@@ -80,6 +80,22 @@ Zero static credentials — all pod auth via Workload Identity federation (OIDC)
 ## Platform Layer (`platform/`)
 
 Argo CD App of Apps pattern. Root app (`platform/argocd/root-app.yaml`) discovers all `platform/*/application.yaml` files.
+
+### GitOps Principle
+
+**Everything that CAN be declarative MUST be declarative and in Git:**
+
+- ✅ Service account definitions (Argo CD values.yaml, not kubectl patches)
+- ✅ RBAC policies (Argo CD values.yaml, not kubectl patches)
+- ✅ ConfigMaps, Deployments, Services (YAML in platform/)
+- ✅ ExternalSecret resources (structure in Git, values in Key Vault)
+
+**Only imperative when impossible to be declarative:**
+
+- ⚠️ Argo CD API tokens (generated via CLI after service account exists)
+- ⚠️ Key Vault secret values (never in Git, stored in Azure Key Vault)
+
+**Example:** The Argo CD `platform-api` service account is defined in `platform/argocd/values.yaml` (GitOps), but the token for that account is generated via `setup-argocd-token.sh` (one-time bootstrap) and stored in Key Vault.
 
 ### Gatekeeper — Three-Application Pattern (mandatory)
 

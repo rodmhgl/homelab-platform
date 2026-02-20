@@ -6,6 +6,36 @@ All notable changes to the homelab-platform project.
 
 ### Added
 
+**2026-02-20: Argo CD Integration Fix (GitOps Refactoring)**
+
+- ✅ **Argo CD Service Account GitOps Configuration** (`platform/argocd/values.yaml`)
+  - Moved service account and RBAC configuration from imperative kubectl patches to declarative Helm values
+  - Added `accounts.platform-api: apiKey` to `configs.cm` section
+  - Added RBAC policies for platform-api role with full application management permissions
+  - **GitOps principle:** Service account and RBAC are now version-controlled and synced via Argo CD
+  - Completes the GitOps vision — only token generation remains imperative (cannot be in Git)
+
+- ✅ **Platform API ConfigMap Fix** (`platform/platform-api/configmap.yaml`)
+  - Fixed `ARGOCD_SERVER_URL` from `argocd-server.argocd.svc.cluster.local` to `http://argocd-server.argocd.svc.cluster.local`
+  - Added clarifying comment about using HTTP for internal cluster communication
+  - Argo CD server exposes port 80 for HTTP internally (no TLS needed)
+
+- ✅ **Argo CD Token Bootstrap Script** (`platform/platform-api/setup-argocd-token.sh`)
+  - ONE-TIME bootstrap script for token generation and Key Vault storage
+  - Removes imperative ConfigMap patches (now in values.yaml)
+  - Validates service account exists before attempting token generation
+  - Supports `--kv-name` argument for explicit Key Vault specification (TFC-friendly)
+  - Auto-detects Key Vault name from Terraform outputs (local state fallback)
+  - Verifies ExternalSecret sync and Platform API health after token storage
+  - Comprehensive error handling with troubleshooting guidance
+
+- ✅ **Documentation** (`platform/platform-api/ARGOCD_TOKEN_SETUP.md`)
+  - Complete setup guide with clear GitOps vs. Imperative separation
+  - Step-by-step instructions for token generation and verification
+  - Troubleshooting section for common issues
+  - Security considerations (token rotation, RBAC scoping)
+  - Completes task #89 — `/api/v1/apps` endpoint now functional with proper token configuration
+
 **2026-02-20: CLI Status Command**
 
 - ✅ **rdp status Command** (`cli/cmd/status.go`)
@@ -108,10 +138,11 @@ All notable changes to the homelab-platform project.
 
 **Platform API Endpoints:**
 - ✅ Scaffold (`POST /api/v1/scaffold`)
-- ✅ Argo CD Apps (`GET /api/v1/apps`, `GET /api/v1/apps/{name}`, `POST /api/v1/apps/{name}/sync`)
+- ✅ Argo CD Apps (`GET /api/v1/apps`, `GET /api/v1/apps/{name}`, `POST /api/v1/apps/{name}/sync`) — requires one-time token bootstrap
 - ✅ Compliance (`GET /api/v1/compliance/summary|policies|violations|vulnerabilities`)
 - ✅ Infrastructure Query (`GET /api/v1/infra/{kind}/{name}`)
 - ✅ Infrastructure List (`GET /api/v1/infra`, `GET /api/v1/infra/storage`, `GET /api/v1/infra/vaults`)
+- ✅ Infrastructure Create (`POST /api/v1/infra`)
 
 **Scaffolds:**
 - ✅ go-service (23 production-ready template files)
@@ -127,7 +158,7 @@ All notable changes to the homelab-platform project.
 - ⬜ HolmesGPT
 
 **Platform API Endpoints:**
-- ⬜ Infrastructure Create/Delete (`POST /api/v1/infra`, `DELETE /api/v1/infra/{kind}/{name}`)
+- ⬜ Infrastructure Delete (`DELETE /api/v1/infra/{kind}/{name}`)
 - ⬜ Secrets (`GET /api/v1/secrets/{namespace}`)
 - ⬜ Investigation (`POST /api/v1/investigate`, `GET /api/v1/investigate/{id}`)
 - ⬜ AI Agent (`POST /api/v1/agent/ask`)
@@ -179,11 +210,27 @@ The `/api/v1/infra/{kind}/{name}` endpoint:
 
 ### GitOps Contract
 
-Infrastructure mutation endpoints (create/delete) will:
+**Infrastructure Mutation (API endpoints):**
+
+Infrastructure mutation endpoints (create/delete):
 - Commit Claim YAML to app Git repositories
 - NOT apply resources directly to the cluster
 - Rely on Argo CD to sync from Git
 - Maintain Git as the single source of truth
+
+**Platform Configuration (Argo CD, Crossplane, etc.):**
+
+Everything that CAN be declarative MUST be in Git:
+- ✅ Service account definitions (Helm values, not kubectl patches)
+- ✅ RBAC policies (Helm values, not kubectl patches)
+- ✅ Deployments, Services, ConfigMaps (YAML manifests)
+- ✅ ExternalSecret resources (structure in Git, values in Key Vault)
+
+Only imperative when impossible to be declarative:
+- ⚠️ API tokens (generated after service accounts exist)
+- ⚠️ Secret values (never in Git, stored in Azure Key Vault)
+
+**Example:** Argo CD's `platform-api` service account is defined in `platform/argocd/values.yaml` (GitOps), but the API token is generated via `setup-argocd-token.sh` (one-time bootstrap).
 
 ---
 
