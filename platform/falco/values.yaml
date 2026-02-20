@@ -43,7 +43,7 @@ falco:
 
   ## Priority threshold for alerts (debug, info, notice, warning, error, critical, alert, emergency)
   ## We only want to be notified about warnings and above
-  priority: warning
+  priority: debug
 
   ## Syscall event drops — if Falco can't keep up with syscall rate, it drops events
   syscall_event_drops:
@@ -285,7 +285,7 @@ rbac:
 ## Service Monitor for Prometheus (kube-prometheus-stack)
 ## Falco exposes metrics on /metrics (events processed, drops, rule matches, etc.)
 serviceMonitor:
-  enabled: false  # Set to true after kube-prometheus-stack is fully deployed
+  enabled: true  # Set to true after kube-prometheus-stack is fully deployed
   labels:
     release: prometheus
   interval: 30s
