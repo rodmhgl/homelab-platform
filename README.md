@@ -17,8 +17,8 @@ AKS Home Lab Internal Developer Platform (IDP) mono-repo.
 | `platform/platform-api/` | ✅ Complete | Platform API Kubernetes manifests (Deployment, Service, RBAC, application.yaml). Secrets managed via ESO ExternalSecret (github-pat, openai-api-key, argocd-token). |
 | `platform/external-secrets/` | ✅ Complete | ESO Helm install + ClusterSecretStore (Workload Identity, wave 3.5). Platform API ExternalSecret resources deployed. Placeholders require Terraform outputs. |
 | `platform/trivy-operator/` | ✅ Complete | Trivy Operator v0.32.0 Helm install + values.yaml (wave 7). Continuous CVE scanning with VulnerabilityReport CRDs. |
+| `platform/monitoring/` | ✅ Complete | kube-prometheus-stack Helm install (Prometheus + Alertmanager + Grafana, wave 8). Grafana admin credentials via ESO from bootstrap Key Vault. Alertmanager pre-configured for HolmesGPT webhook. Custom scrape configs for Crossplane, Gatekeeper, Trivy, Platform API. |
 | `platform/falco/` | ⬜ Pending | Runtime security + Falcosidekick |
-| `platform/monitoring/` | ⬜ Pending | kube-prometheus-stack + Grafana dashboards |
 | `platform/kagent/` | ⬜ Pending | Natural language cluster interaction |
 | `platform/holmesgpt/` | ⬜ Pending | AI-powered root cause analysis |
 | `scaffolds/go-service/` | ✅ Complete | Copier template — 23 production-ready template files (copier.yml, main.go, Dockerfile, k8s/ manifests, Crossplane Claims, CI/CD pipeline, Makefile, golangci-lint, Dependabot, CODEOWNERS). Generates Gatekeeper-compliant apps with optional Azure infrastructure. |

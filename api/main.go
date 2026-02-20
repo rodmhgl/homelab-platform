@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/kelseyhightower/envconfig"
+	"github.com/rodmhgl/homelab-platform/api/internal/argocd"
 	"github.com/rodmhgl/homelab-platform/api/internal/scaffold"
 )
 
@@ -79,8 +80,14 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Initialize Argo CD handler
+	argocdHandler := argocd.NewHandler(&argocd.Config{
+		ServerURL: cfg.ArgocdServerURL,
+		Token:     cfg.ArgocdToken,
+	})
+
 	// Initialize router
-	r := setupRouter(scaffoldHandler)
+	r := setupRouter(scaffoldHandler, argocdHandler)
 
 	// Create HTTP server
 	srv := &http.Server{
@@ -128,7 +135,7 @@ func main() {
 }
 
 // setupRouter configures the Chi router with middleware and routes
-func setupRouter(scaffoldHandler *scaffold.Handler) *chi.Mux {
+func setupRouter(scaffoldHandler *scaffold.Handler, argocdHandler *argocd.Handler) *chi.Mux {
 	r := chi.NewRouter()
 
 	// Global middleware
@@ -154,10 +161,10 @@ func setupRouter(scaffoldHandler *scaffold.Handler) *chi.Mux {
 
 		// Application management endpoints
 		r.Route("/apps", func(r chi.Router) {
-			r.Get("/", notImplementedHandler("GET /api/v1/apps"))
+			r.Get("/", argocdHandler.HandleListApps)
 			r.Route("/{name}", func(r chi.Router) {
-				r.Get("/", notImplementedHandler("GET /api/v1/apps/{name}"))
-				r.Post("/sync", notImplementedHandler("POST /api/v1/apps/{name}/sync"))
+				r.Get("/", argocdHandler.HandleGetApp)
+				r.Post("/sync", argocdHandler.HandleSyncApp)
 			})
 		})
 
