@@ -1,0 +1,81 @@
+## External Secrets Operator — Helm Values
+##
+## Syncs secrets from external secret management systems (Azure Key Vault, AWS
+## Secrets Manager, etc.) into Kubernetes Secret resources. This platform uses
+## ESO exclusively for platform-level secrets stored in the bootstrap Key Vault
+## (LLM API keys, GitHub tokens, etc.). App-level secrets use Crossplane
+## connection secrets instead.
+##
+## Authentication: Azure Workload Identity (OIDC federation). The ESO controller
+## ServiceAccount is annotated with the client ID of the Azure managed identity
+## created in Terraform (see infra/identities.tf). The Azure Workload Identity
+## mutating webhook injects the OIDC token into the pod, which ESO exchanges for
+## an Azure access token scoped to the bootstrap Key Vault.
+
+## Install CRDs alongside the chart (prevents out-of-band CRD management issues).
+installCRDs: true
+
+## Replicas: homelab uses 1 replica (no HA requirement).
+replicaCount: 1
+
+## ServiceAccount configuration — Workload Identity annotation is injected here.
+serviceAccount:
+  ## Use the default name expected by Terraform's federated credential
+  ## (see infra/variables.tf: eso_service_account = "external-secrets")
+  name: external-secrets
+  create: true
+  annotations:
+    ## PLACEHOLDER: Replace with actual client ID from Terraform output.
+    ## To retrieve: terraform output -raw eso_identity_client_id
+    ## This annotation triggers the Azure Workload Identity webhook to mount
+    ## the OIDC token at /var/run/secrets/azure/tokens/azure-identity-token
+    azure.workload.identity/client-id: "REPLACE_WITH_ESO_IDENTITY_CLIENT_ID"
+
+## Pod labels: required by Azure Workload Identity webhook for token injection.
+podLabels:
+  azure.workload.identity/use: "true"
+
+## Resource limits: small footprint for homelab.
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 50m
+    memory: 128Mi
+
+## SecurityContext: run as non-root (defense in depth).
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+
+## Webhook: ESO validates SecretStore and ExternalSecret manifests at admission
+## time. In production, set failurePolicy: Fail. For homelab, Ignore allows the
+## cluster to continue operating if ESO pods are down.
+webhook:
+  create: true
+  failurePolicy: Ignore
+
+## Cert-manager integration: ESO uses cert-manager to issue TLS certs for the
+## webhook. This requires cert-manager to be installed first (not yet in this
+## platform — TODO: add cert-manager in wave 1-2).
+##
+## WORKAROUND: For now, disable cert-manager integration and let ESO generate
+## self-signed certs. This is acceptable for homelab but should be replaced with
+## cert-manager in production.
+certController:
+  create: true
+  requeueInterval: 48h
+
+## Metrics: Prometheus ServiceMonitor (requires Prometheus Operator CRDs).
+## Disabled for now; will be enabled when kube-prometheus-stack is installed.
+metrics:
+  service:
+    enabled: false
+  serviceMonitor:
+    enabled: false

@@ -1,0 +1,72 @@
+## External Secrets Operator — Argo CD Application
+##
+## Installs External Secrets Operator via Helm and applies the ClusterSecretStore
+## for the bootstrap Azure Key Vault. ESO syncs platform-level secrets from the
+## Key Vault into Kubernetes Secrets that other platform components consume.
+##
+## Sync-wave ordering (inter-Application, enforced by root App-of-Apps):
+##   Wave 1:  crossplane (Crossplane core Helm chart + CRDs)
+##   Wave 2:  crossplane-providers (DeploymentRuntimeConfig + Provider manifests)
+##   Wave 3:  crossplane-config (ProviderConfig + XRDs + Compositions)
+##   Wave 3.5: this Application (ESO Helm chart + ClusterSecretStore)
+##   Wave 4:  gatekeeper (Gatekeeper Helm chart)
+##   Wave 5:  gatekeeper-templates (ConstraintTemplates)
+##   Wave 6:  gatekeeper-constraints (Constraint instances)
+##
+## Why wave 3.5? ESO needs to be available before platform components that consume
+## secrets (e.g., Platform API ExternalSecret for GitHub token), but it doesn't
+## need to wait for Gatekeeper. Placing it after Crossplane ensures the bootstrap
+## Key Vault exists (provisioned by Terraform before first Argo CD sync).
+##
+## Authentication: Azure Workload Identity. Terraform provisions:
+## - Managed identity (id-{cluster}-eso) with Key Vault Secrets User role
+## - Federated credential trusting the ESO ServiceAccount
+## The ESO ServiceAccount is annotated with the client ID in values.yaml.
+##
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "3.5"
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/name: external-secrets
+    app.kubernetes.io/part-of: platform
+  name: external-secrets
+  namespace: argocd
+spec:
+  destination:
+    namespace: external-secrets
+    server: https://kubernetes.default.svc
+  project: platform
+  sources:
+    ## Helm chart — installs ESO controller, webhook, cert-controller, CRDs
+    - chart: external-secrets
+      helm:
+        releaseName: external-secrets
+        valueFiles:
+          - $values/platform/external-secrets/values.yaml
+      repoURL: https://charts.external-secrets.io
+      targetRevision: "0.11.0"
+
+    ## Platform repo — values.yaml + ClusterSecretStore manifest
+    - path: platform/external-secrets
+      ref: values
+      repoURL: https://github.com/rodmhgl/homelab-platform
+      targetRevision: main
+      directory:
+        recurse: false
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    ## Retry on transient failures (e.g., webhook cert generation takes time)
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m

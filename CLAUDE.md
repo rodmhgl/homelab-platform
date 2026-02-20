@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 AKS Home Lab Internal Developer Platform (IDP) mono-repo.
 
 | Directory | Status |
-|---|---|
+| --- | --- |
 | `infra/` | ✅ Terraform — AKS, networking, ACR, bootstrap KV, managed identities |
 | `platform/argocd/` | ✅ Phase A — Argo CD Helm values, self-manage Application, root App of Apps, Workload ApplicationSet, Projects, bootstrap.sh |
 | `platform/crossplane/` | ✅ Phase B — Crossplane core Helm install (wave 1) |
@@ -16,10 +16,11 @@ AKS Home Lab Internal Developer Platform (IDP) mono-repo.
 | `platform/gatekeeper/` | ✅ Phase C — Gatekeeper Helm install (wave 4) |
 | `platform/gatekeeper-templates/` | ✅ Phase C — 8 ConstraintTemplates (wave 5) |
 | `platform/gatekeeper-constraints/` | ✅ Phase C — 8 Constraints with enforcementAction: deny (wave 6) |
+| `platform/platform-api/` | ✅ Phase D — Platform API Deployment + Service + RBAC (wave 10) |
 | `platform/` (remaining) | ⬜ ESO, Trivy, Falco, monitoring, kagent, HolmesGPT |
 | `scaffolds/go-service/` | ✅ Copier template — complete (23 template files: copier.yml, main.go, Dockerfile, k8s/, claims/, CI/CD, Makefile, supporting files) |
 | `scaffolds/python-service/` | ⬜ Copier template (not started) |
-| `api/` | ⬜ Platform API (Go + Chi) |
+| `api/` | ✅ Platform API (Go + Chi) — scaffold endpoint implemented (task #51) |
 | `cli/` | 🔨 rdp CLI (Go + Cobra) — Cobra root command + Viper config management complete |
 
 ## Terraform (`infra/`)
@@ -57,7 +58,7 @@ Do not provision app-level resources in Terraform. Do not provision platform-lev
 Zero static credentials — all pod auth via Workload Identity federation (OIDC):
 
 | Identity | Subject | Permission |
-|---|---|---|
+| --- | --- | --- |
 | `id-{cluster}-crossplane` | `system:serviceaccount:crossplane-system:provider-azure` | Contributor on subscription |
 | `id-{cluster}-eso` | `system:serviceaccount:external-secrets:external-secrets` | Key Vault Secrets User on bootstrap KV |
 | `id-{cluster}-cp` | AKS control plane | Network Contributor on subnet |
@@ -67,7 +68,7 @@ Zero static credentials — all pod auth via Workload Identity federation (OIDC)
 ### Key Outputs (consumed by platform layer)
 
 | Output | Consumer |
-|---|---|
+| --- | --- |
 | `crossplane_identity_client_id` | `DeploymentRuntimeConfig` annotation |
 | `eso_identity_client_id` | ESO ServiceAccount annotation |
 | `keyvault_uri` | ESO `ClusterSecretStore` spec |
@@ -82,7 +83,7 @@ Argo CD App of Apps pattern. Root app (`platform/argocd/root-app.yaml`) discover
 
 Gatekeeper requires three separate Argo CD Applications due to async CRD registration (same problem as Crossplane):
 
-```
+```text
 gatekeeper           (wave 4) — Helm chart; installs core controller + webhook
 gatekeeper-templates (wave 5) — ConstraintTemplates; controller registers CRDs asynchronously
 gatekeeper-constraints (wave 6) — Constraints; SkipDryRunOnMissingResource=true
@@ -91,6 +92,7 @@ gatekeeper-constraints (wave 6) — Constraints; SkipDryRunOnMissingResource=tru
 **Why three and not one or two:** ConstraintTemplates instruct the Gatekeeper controller to register new CRDs (one per template). Constraint objects reference those CRDs. If templates and constraints are in the same Application, Argo CD attempts both in a single sync pass — constraints fail because the CRDs haven't been registered yet. Splitting into separate Applications with inter-Application wave ordering ensures templates fully process before constraints are attempted.
 
 **Rego syntax gotcha:** `contains` is a reserved built-in function in Rego 3.x — do NOT use it as a rule name. Use set comprehension syntax instead:
+
 ```rego
 # Wrong (causes "var cannot be used for rule name" errors):
 input_containers contains container { ... }
@@ -100,6 +102,7 @@ input_containers[container] { ... }
 ```
 
 **8 ConstraintTemplates:**
+
 - `k8srequiredlabels` — enforces ownership labels on Deployments
 - `containerlimitsrequired` — CPU + memory limits mandatory
 - `nolatesttag` — blocks `:latest` tag or untagged images
@@ -113,7 +116,7 @@ input_containers[container] { ... }
 
 Crossplane requires three separate Argo CD Applications due to async CRD registration:
 
-```
+```text
 crossplane          (wave 1) — Helm chart; installs pkg.crossplane.io + apiextensions.crossplane.io CRDs
 crossplane-providers (wave 2) — DeploymentRuntimeConfig + Providers + Functions; waits for core CRDs
 crossplane-config   (wave 3) — ProviderConfig + XRDs + Compositions; SkipDryRunOnMissingResource=true
@@ -122,6 +125,7 @@ crossplane-config   (wave 3) — ProviderConfig + XRDs + Compositions; SkipDryRu
 **Why three and not one:** Provider pods register their own CRDs (azure.upbound.io/*, etc.) asynchronously after becoming `Healthy`. Argo CD has no visibility into CRD registration timing, so `crossplane-config` uses `SkipDryRunOnMissingResource=true` + `selfHeal` to retry until provider CRDs land.
 
 **Known schema facts for Upbound Azure provider v1.9.0:**
+
 - `installConditionFailurePolicy` does not exist in the Provider schema — omit it
 - ProviderConfig credential source is `OIDCTokenFile` (not `InjectedIdentity` — renamed in v1.x)
 
@@ -129,14 +133,48 @@ Compositions use `function-patch-and-transform` in **Pipeline mode** — not the
 
 `ApplicationSet` generator watches `apps/*/config.json` in the platform repo to auto-onboard new scaffold repos.
 
-## Platform API (`api/`) and CLI (`cli/`) — planned
+## Platform API (`api/`)
 
-- Language: Go
-- API router: Chi
-- CLI framework: Cobra + bubbletea
-- The `/api/v1/infra` endpoints commit Claim YAML to the app's Git repo — they do NOT create Claims directly in the cluster. Git is the single source of truth.
+**Status:** Foundation complete, scaffold endpoint implemented (task #51)
+
+- **Language:** Go
+- **Router:** Chi
+- **Logging:** Structured logging with `slog`
+- **Configuration:** Environment variables via `envconfig`
+
+**Implemented endpoints:**
+
+- `GET /health`, `GET /ready` — Health checks
+- `POST /api/v1/scaffold` — ✅ Implemented (task #51)
+  - Runs Copier to generate project from template
+  - Creates GitHub repository
+  - Initializes git, commits, and pushes to new repo
+  - Commits `apps/<name>/config.json` to platform repo for Argo CD discovery
+  - See `api/internal/scaffold/README.md` for full documentation
+
+**Pending endpoints:**
+
+- `/api/v1/apps/*` — Argo CD application management
+- `/api/v1/infra/*` — Crossplane Claim management (commits YAML to Git, not direct cluster mutations)
+- `/api/v1/compliance/*` — Gatekeeper + Trivy + Falco aggregation
+- `/api/v1/secrets/*` — ExternalSecrets + connection secrets
+- `/api/v1/investigate/*` — HolmesGPT integration
+- `/api/v1/agent/ask` — kagent CRD-based interaction
+- `/api/v1/webhooks/*` — Falco and Argo CD webhooks
+
+**Key architectural patterns:**
+
+- GitOps for infrastructure: `/api/v1/infra` endpoints commit Claim YAML to app repos, not direct cluster mutations
 - Falco events arrive at `POST /api/v1/webhooks/falco` via Falcosidekick
-- kagent integration is CRD-based: Platform API creates `Agent`/`Task` resources, no direct HTTP to an LLM
+- kagent interaction is CRD-based: Platform API creates `Agent`/`Task` resources, not direct HTTP to an LLM
+
+## CLI (`cli/`)
+
+**Status:** Foundation complete (root command + config management)
+
+- **Framework:** Cobra + Viper
+- **Config file:** `~/.rdp/config.yaml` (three-tier precedence: flags > env > file)
+- **Next:** Implement subcommands that call Platform API endpoints
 
 ## Scaffolds (`scaffolds/`)
 
@@ -150,7 +188,7 @@ Storage account naming rule: `st{claimname}` — lowercase, strip hyphens/dots/u
 
 ## CIDR Layout
 
-```
+```text
 VNet:         10.10.0.0/16
 AKS nodes:    10.10.0.0/22   (drawn from VNet)
 Pod overlay:  192.168.0.0/16 (Cilium; not in VNet)
