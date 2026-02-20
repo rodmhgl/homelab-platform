@@ -33,6 +33,7 @@ spec:
         conversionStrategy: Default  
         decodingStrategy: None
         key: grafana-admin-password
+        metadataPolicy: None
       rewrite:
         - regexp:
             source: "(.*)"
