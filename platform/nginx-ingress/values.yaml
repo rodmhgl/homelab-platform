@@ -84,6 +84,12 @@ controller:
   # --- Admission Webhooks ---
   admissionWebhooks:
     enabled: true
+    createSecretJob:
+      # Disable TTL so Argo CD can track Job completion properly
+      ttlSecondsAfterFinished: null
+    patchWebhookJob:
+      # Disable TTL so Argo CD can track Job completion properly
+      ttlSecondsAfterFinished: null
     patch:
       enabled: true
       image:
