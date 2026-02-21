@@ -46,7 +46,10 @@ server:
 
   ## Ingress is handled separately (platform API nginx or Azure App GW)
   ingress:
-    enabled: false
+    enabled: true
+    ingressClassName: "nginx"
+    hostname: "argocd.rdp.azurelaboratory.com"
+    tls: false
 
 applicationSet:
   replicas: 1
