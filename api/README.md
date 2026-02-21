@@ -70,7 +70,7 @@ make lint
 All configuration is via environment variables:
 
 | Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
+| -------- | -------- | ------- | ----------- |
 | `PORT` | No | `8080` | HTTP server port |
 | `LOG_LEVEL` | No | `info` | Log level (debug, info, warn, error) |
 | `SHUTDOWN_TIMEOUT` | No | `30` | Graceful shutdown timeout (seconds) |
@@ -144,12 +144,14 @@ All configuration is via environment variables:
 Compliance aggregation endpoints — queries Gatekeeper Constraints and Trivy VulnerabilityReports to provide unified compliance view.
 
 **Files:**
+
 - `handler.go` — HTTP handlers for 5 endpoints
 - `client.go` — Kubernetes dynamic client wrapper
 - `types.go` — Request/response DTOs
 - `README.md` — Full package documentation
 
 **Key Features:**
+
 - Queries all 8 deployed Gatekeeper constraint kinds
 - Aggregates Trivy CVE scans from workload namespaces (excludes platform namespaces)
 - Calculates compliance score: `max(0, 100 - (violations × 5) - (critical_cves × 10) - (high_cves × 5))`
@@ -163,6 +165,7 @@ See `internal/compliance/README.md` for detailed documentation.
 Argo CD application management — wraps Argo CD API for listing, viewing, and syncing applications.
 
 **Files:**
+
 - `handler.go` — HTTP handlers
 - `client.go` — Argo CD HTTP client wrapper
 - `types.go` — Request/response DTOs
@@ -172,6 +175,7 @@ Argo CD application management — wraps Argo CD API for listing, viewing, and s
 Project scaffolding — runs Copier templates, creates GitHub repos, onboards to Argo CD.
 
 **Files:**
+
 - `handler.go` — HTTP handler
 - `copier.go` — Copier template execution
 - `github.go` — GitHub API client
@@ -184,6 +188,7 @@ Project scaffolding — runs Copier templates, creates GitHub repos, onboards to
 Infrastructure management endpoints — full CRUD operations for Crossplane Claims via GitOps, providing complete resource tree visibility.
 
 **Files:**
+
 - `handler.go` — HTTP handlers for list, detail, create, and delete operations
 - `client.go` — Kubernetes dynamic client wrapper with GVR mappings
 - `github.go` — GitHub API client for GitOps commits and deletions
@@ -195,6 +200,7 @@ Infrastructure management endpoints — full CRUD operations for Crossplane Clai
 - `README.md` — Full package documentation
 
 **Key Features:**
+
 - **Complete CRUD operations** — List, Read, Create, Delete all via GitOps pattern
 - Lists all Claims across namespaces (GET /api/v1/infra, /infra/storage, /infra/vaults)
 - Traverses complete Crossplane resource tree: Claim → Composite → Managed Resources
@@ -230,6 +236,7 @@ Kubernetes manifests are in the platform repository at `homelab-platform/platfor
 - `application.yaml` — Argo CD Application manifest
 
 The API runs in the `platform` namespace with a ServiceAccount that has appropriate RBAC for:
+
 - Crossplane Claims (read, list, watch, create, delete)
 - Argo CD Applications (read, list via API)
 - Gatekeeper Constraints & ConstraintTemplates (read, list)

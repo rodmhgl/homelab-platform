@@ -6,7 +6,7 @@
 
 ## Test Environment
 
-- **API URL:** http://localhost:8080 (port-forwarded from Kubernetes)
+- **API URL:** <http://localhost:8080> (port-forwarded from Kubernetes)
 - **Authentication:** Bearer token (validation not yet implemented)
 - **GitHub Integration:** ✅ Live commits to rodmhgl/homelab-platform
 
@@ -15,7 +15,7 @@
 ## Test Results Summary
 
 | Test | Status | Description |
-|------|--------|-------------|
+| ---- | ------ | ----------- |
 | 1. Valid StorageBucket | ✅ PASS | Creates Claim with default parameters |
 | 2. Valid Vault | ✅ PASS | Creates Vault with custom parameters |
 | 3. Invalid Location | ✅ PASS | Correctly rejects westeurope |
@@ -33,6 +33,7 @@
 ### Test 1: Valid StorageBucket Request
 
 **Request:**
+
 ```json
 {
   "kind": "StorageBucket",
@@ -49,6 +50,7 @@
 ```
 
 **Response:** `201 Created`
+
 ```json
 {
   "success": true,
@@ -64,12 +66,14 @@
 ```
 
 **GitHub Verification:**
-- Commit: https://github.com/rodmhgl/homelab-platform/commit/d40f23bea2c59b69645ba8a0c460194353c2cd79
-- File: https://github.com/rodmhgl/homelab-platform/blob/d40f23bea2c59b69645ba8a0c460194353c2cd79/k8s/claims/test-storage.yaml
+
+- Commit: <https://github.com/rodmhgl/homelab-platform/commit/d40f23bea2c59b69645ba8a0c460194353c2cd79>
+- File: <https://github.com/rodmhgl/homelab-platform/blob/d40f23bea2c59b69645ba8a0c460194353c2cd79/k8s/claims/test-storage.yaml>
 - Author: Rod Stewart
 - Message: "Add StorageBucket Claim: test-storage\n\nProvisions StorageBucket infrastructure for default namespace.\n\nLocation: southcentralus\nManaged by: Platform API"
 
 **Generated YAML:**
+
 ```yaml
 apiVersion: platform.example.com/v1alpha1
 kind: StorageBucket
@@ -106,6 +110,7 @@ spec:
 ### Test 2: Valid Vault Request
 
 **Request:**
+
 ```json
 {
   "kind": "Vault",
@@ -122,6 +127,7 @@ spec:
 ```
 
 **Response:** `201 Created`
+
 ```json
 {
   "success": true,
@@ -137,6 +143,7 @@ spec:
 ```
 
 **Generated YAML:**
+
 ```yaml
 apiVersion: platform.example.com/v1alpha1
 kind: Vault
@@ -172,6 +179,7 @@ spec:
 ### Test 3: Invalid Location (westeurope)
 
 **Request:**
+
 ```json
 {
   "kind": "StorageBucket",
@@ -186,6 +194,7 @@ spec:
 ```
 
 **Response:** `400 Bad Request`
+
 ```json
 {
   "error": "policy violation: location 'westeurope' is not allowed (allowed: southcentralus, eastus2)"
@@ -199,6 +208,7 @@ spec:
 ### Test 4: Public Access Blocked
 
 **Request:**
+
 ```json
 {
   "kind": "StorageBucket",
@@ -214,6 +224,7 @@ spec:
 ```
 
 **Response:** `400 Bad Request`
+
 ```json
 {
   "error": "policy violation: publicAccess: true is not allowed (enforced by Gatekeeper)"
@@ -227,6 +238,7 @@ spec:
 ### Test 5: Invalid Name (uppercase)
 
 **Request:**
+
 ```json
 {
   "kind": "StorageBucket",
@@ -241,6 +253,7 @@ spec:
 ```
 
 **Response:** `400 Bad Request`
+
 ```json
 {
   "error": "validation failed: name must be a valid DNS label (lowercase alphanumeric + hyphens, cannot start/end with hyphen)"
@@ -254,6 +267,7 @@ spec:
 ### Test 6: Invalid Tier
 
 **Request:**
+
 ```json
 {
   "kind": "StorageBucket",
@@ -269,6 +283,7 @@ spec:
 ```
 
 **Response:** `400 Bad Request`
+
 ```json
 {
   "error": "policy violation: invalid tier 'InvalidTier' (allowed: Standard, Premium)"
@@ -282,6 +297,7 @@ spec:
 ### Test 7: Invalid Vault Retention (too low)
 
 **Request:**
+
 ```json
 {
   "kind": "Vault",
@@ -297,6 +313,7 @@ spec:
 ```
 
 **Response:** `400 Bad Request`
+
 ```json
 {
   "error": "policy violation: softDeleteRetentionDays must be between 7 and 90, got 5"
@@ -339,7 +356,7 @@ API logs show proper structured logging with slog:
 ## Feature Verification
 
 | Feature | Status | Notes |
-|---------|--------|-------|
+| ------- | ------ | ----- |
 | GitOps Contract | ✅ | Commits to Git, not direct cluster creation |
 | Gatekeeper Pre-Validation | ✅ | Mirrors cluster constraints client-side |
 | Smart Defaults | ✅ | southcentralus, Standard/LRS, standard/7 days |
@@ -354,7 +371,7 @@ API logs show proper structured logging with slog:
 ## Code Quality
 
 | Metric | Result |
-|--------|--------|
+| ------ | ------ |
 | Unit Tests | 4 test functions, 27 test cases |
 | Test Pass Rate | 100% (27/27) |
 | Build Status | ✅ Compiles successfully |
@@ -373,7 +390,7 @@ This endpoint **unblocks 3 downstream tasks:**
 
 The platform is now ready for the **Act 5 demo** (Self-Service Infrastructure):
 
-```
+```text
 rdp infra create storage → Platform API → Git commit → Argo CD sync → Crossplane → Azure
 ```
 

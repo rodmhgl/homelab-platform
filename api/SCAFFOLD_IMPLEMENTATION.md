@@ -8,29 +8,34 @@ Implemented the POST `/api/v1/scaffold` endpoint (Task #51) to provide automated
 
 ### Core Components
 
-**1. Handler Package** (`internal/scaffold/`)
+#### 1. Handler Package (`internal/scaffold/`)
+
 - `types.go` — Request/response structures and Argo CD config schema
 - `handler.go` — Main HTTP handler with validation, defaults, and workflow orchestration
 - `github.go` — GitHub API operations (repo creation, platform config commits)
 - `git.go` — Git CLI operations (init, commit, push)
 - `README.md` — Comprehensive documentation
 
-**2. Main API Integration**
+#### 2. Main API Integration
+
 - Updated `main.go` to initialize and wire the scaffold handler
 - Added `Config` fields for scaffold paths and work directory
 - Connected handler to the `/api/v1/scaffold` route
 
-**3. Dependencies**
+#### 3. Dependencies
+
 - `github.com/google/go-github/v66` — GitHub API client
 - `golang.org/x/oauth2` — OAuth2 token authentication
 - External: `git` CLI, `copier` CLI (Python)
 
-**4. Docker Image**
+#### 4. Docker Image
+
 - Updated `Dockerfile` to install `git`, `python3`, `copier`
 - Created directories for scaffold templates and work directory
 - Non-root user (uid 1000) with proper permissions
 
-**5. Kubernetes Deployment**
+#### 5. Kubernetes Deployment
+
 - Added init container to clone scaffold templates from GitHub
 - Mounted three volumes:
   - `scaffold-templates` — Read-only, populated by init container
@@ -40,7 +45,7 @@ Implemented the POST `/api/v1/scaffold` endpoint (Task #51) to provide automated
 
 ## Workflow
 
-```
+```text
 1. POST /api/v1/scaffold with template + project config
    ↓
 2. Validate request (template exists, project name valid, etc.)
@@ -61,25 +66,32 @@ Implemented the POST `/api/v1/scaffold` endpoint (Task #51) to provide automated
 ### Request Fields
 
 **Core:**
+
 - `template` — "go-service" or "python-service"
 - `project_name` — Lowercase, hyphens only, 3-63 chars
 
 **Go-specific:**
+
 - `go_module_path`, `http_port`, `grpc_port`
 
 **Features:**
+
 - `enable_grpc`, `enable_database`, `enable_storage`, `enable_keyvault`
 
 **Storage config (if enabled):**
+
 - `storage_location`, `storage_replication`, `storage_public_access`, `storage_container_name`, `storage_connection_env`
 
 **Vault config (if enabled):**
+
 - `vault_location`, `vault_sku`, `vault_public_access`, `vault_connection_env`
 
 **Metadata:**
+
 - `team_name`, `team_email`, `owners`
 
 **GitHub (optional overrides):**
+
 - `github_org`, `github_repo`, `repo_private`
 
 ### Response Fields
@@ -96,7 +108,7 @@ Implemented the POST `/api/v1/scaffold` endpoint (Task #51) to provide automated
 **Environment Variables:**
 
 | Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
+| --- | --- | --- | --- |
 | `GITHUB_TOKEN` | Yes | - | GitHub PAT (repo scope) |
 | `GITHUB_ORG` | Yes | - | GitHub org for new repos |
 | `PLATFORM_REPO` | Yes | `homelab-platform` | Platform repo name |
@@ -118,6 +130,7 @@ The `GITHUB_TOKEN` is stored in `platform-api-secrets`. In production, this shou
 ## Error Handling
 
 **HTTP Status Codes:**
+
 - `201 Created` — Success
 - `400 Bad Request` — Invalid input
 - `409 Conflict` — Repository already exists
@@ -140,11 +153,13 @@ Before deploying:
 ## Integration Points
 
 **Upstream Dependencies:**
+
 - Copier templates (go-service, python-service) must exist
 - GitHub API must be reachable
 - Platform repo must exist and be writable
 
 **Downstream Consumers:**
+
 - Argo CD ApplicationSet watches `apps/*/config.json`
 - Newly created repos are auto-deployed to the cluster
 - Gatekeeper validates all generated manifests
@@ -161,7 +176,7 @@ Before deploying:
 
 ## Files Changed
 
-```
+```text
 homelab-platform/api/
 ├── main.go                              # ✅ Wired scaffold handler
 ├── go.mod                               # ✅ Added GitHub/OAuth2 deps
@@ -182,15 +197,18 @@ homelab-platform/platform/platform-api/
 ## Task Dependencies
 
 **Completed prerequisites:**
+
 - ✅ Task #41 — Platform API foundation (Go + Chi router)
 - ✅ Task #54 — Kubernetes manifests (Deployment, Service, ConfigMap, Secret)
 - ✅ Task #55 — go-service Copier template (all 23 files)
 
 **Unblocked by completion:**
+
 - Task #64 — Scaffold post-action (already implemented as part of #51)
 - Task #72 — `rdp scaffold create` CLI command (can now call this API)
 - Task #85 — Portal scaffold form (can now call this API)
 
 **Related future work:**
+
 - Task #63 — python-service scaffold template
 - Task #87 — ExternalSecret for Platform API secrets (GitHub token)
