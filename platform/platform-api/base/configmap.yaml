@@ -19,7 +19,7 @@ data:
 
   # Argo CD configuration
   # Internal cluster URL - uses HTTP (port 80) for internal communication
-  ARGOCD_SERVER_URL: "http://argocd-server.argocd.svc.cluster.local"
+  ARGOCD_SERVER_URL: "http://argocd.rdp.azurelaboratory.com"
 
   # GitHub configuration
   GITHUB_ORG: "rodmhgl"  # Update with your GitHub org
@@ -27,7 +27,7 @@ data:
 
   # AI Operations configuration
   KAGENT_NAMESPACE: "kagent-system"
-  HOLMESGPT_URL: "http://holmesgpt.holmesgpt-system.svc.cluster.local:8080"
+  HOLMESGPT_URL: "http://holmesgpt.rdp.azurelaboratory.com"
 
   # Scaffold configuration
   SCAFFOLD_TEMPLATES: "/app/scaffolds"
