@@ -194,6 +194,21 @@ grafana:
     userKey: admin-user
     passwordKey: admin-password
 
+  ingress:
+      enabled: true
+      ingressClassName: nginx
+      annotations: {}
+        # kubernetes.io/ingress.class: nginx
+        # kubernetes.io/tls-acme: "true"
+      labels: {}
+      hosts:
+        - grafana.rdp.azurelaboratory.com
+      path: /
+      tls: []
+      # - secretName: grafana-general-tls
+      #   hosts:
+      #   - grafana.example.com
+
   # Persistence
   persistence:
     enabled: true
