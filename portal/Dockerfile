@@ -5,7 +5,7 @@ WORKDIR /build
 
 # Install dependencies (cached layer)
 COPY package.json package-lock.json ./
-RUN npm ci --only=production=false
+RUN npm ci 
 
 # Copy source and build
 COPY . .
@@ -32,7 +32,8 @@ COPY --from=builder --chown=portal:portal /build/dist /usr/share/nginx/html
 COPY --chown=portal:portal nginx/default.conf /etc/nginx/conf.d/default.conf
 
 # Nginx PID file → /tmp (read-only rootfs compatible)
-RUN sed -i 's|pid /var/run/nginx.pid;|pid /tmp/nginx.pid;|' /etc/nginx/nginx.conf
+# RUN sed -i 's|pid /var/run/nginx.pid;|pid /tmp/nginx.pid;|' /etc/nginx/nginx.conf
+RUN sed -i 's|pid .*/nginx.pid;|pid /tmp/nginx.pid;|' /etc/nginx/nginx.conf
 
 USER portal
 EXPOSE 8080
