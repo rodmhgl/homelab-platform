@@ -33,7 +33,7 @@ spec:
       containers:
         - name: portal-ui
           image: homelabplatformacr.azurecr.io/portal-ui:v0.1.0
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always 
           ports:
             - name: http
               containerPort: 8080
