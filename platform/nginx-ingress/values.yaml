@@ -88,6 +88,9 @@ controller:
       enabled: true
       image:
         pullPolicy: IfNotPresent
+      # Disable TTL so Argo CD can track Job completion properly
+      # (Jobs with TTL get cleaned up before Argo CD sees completion)
+      ttlSecondsAfterFinished: null
 
 # --- Default Backend Configuration ---
 defaultBackend:
