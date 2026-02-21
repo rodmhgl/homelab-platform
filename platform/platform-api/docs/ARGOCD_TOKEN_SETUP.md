@@ -11,12 +11,14 @@ Task #89: The Platform API's `/api/v1/apps` endpoints require an Argo CD API tok
 ## GitOps vs. Imperative Split
 
 **GitOps-managed (declarative, in Git):**
+
 - ✅ Argo CD service account definition (`platform/argocd/values.yaml`)
 - ✅ RBAC policies for the service account (`platform/argocd/values.yaml`)
 - ✅ ExternalSecret resource (`platform/platform-api/externalsecrets/platform-api-secrets.yaml`)
 - ✅ ConfigMap with Argo CD server URL (`platform/platform-api/configmap.yaml`)
 
 **Imperative bootstrap (one-time script):**
+
 - ⚠️ Token generation (requires Argo CD API call)
 - ⚠️ Key Vault secret creation (token value never in Git)
 
@@ -66,12 +68,14 @@ cd platform/platform-api
 ```
 
 **What the script does:**
+
 1. ✅ Verifies Argo CD service account exists (from GitOps)
 2. ✅ Generates API token via `argocd account generate-token`
 3. ✅ Stores token in Azure Key Vault as `argocd-token`
 4. ✅ Triggers ExternalSecret sync (if Platform API is deployed)
 
 **What the script does NOT do:**
+
 - ❌ Patch ConfigMaps (service account + RBAC are in values.yaml)
 - ❌ Restart Argo CD server (Helm manages the Deployment)
 
@@ -118,18 +122,21 @@ curl -H "Authorization: Bearer test-token" \
 ## Verification Checklist
 
 **GitOps-managed (check Git and Argo CD):**
+
 - [ ] `platform/argocd/values.yaml` has `accounts.platform-api: apiKey`
 - [ ] `platform/argocd/values.yaml` has RBAC policy for `platform-api` role
 - [ ] `platform/platform-api/configmap.yaml` has correct `ARGOCD_SERVER_URL`
 - [ ] Argo CD Application synced successfully
 
 **Imperative bootstrap (check script output):**
+
 - [ ] `setup-argocd-token.sh` ran successfully
 - [ ] Token stored in Azure Key Vault as `argocd-token`
 - [ ] ExternalSecret status shows `SecretSynced: True`
 - [ ] Kubernetes Secret `platform-api-secrets` exists with `ARGOCD_TOKEN` key
 
 **Integration test:**
+
 - [ ] `/api/v1/apps` endpoint returns valid JSON (no 401 errors)
 
 ## Troubleshooting
@@ -139,6 +146,7 @@ curl -H "Authorization: Bearer test-token" \
 **Symptom:** `kubectl describe externalsecret platform-api-secrets -n platform` shows `SecretSyncedError`
 
 **Solution:**
+
 ```bash
 # Check if the secret exists in Key Vault
 az keyvault secret list --vault-name "$KV_NAME" -o table | grep argocd-token
@@ -153,11 +161,13 @@ kubectl logs -n external-secrets -l app.kubernetes.io/name=external-secrets
 **Symptom:** Platform API logs show "request failed: 401"
 
 **Possible causes:**
+
 1. Token not yet synced to pod - wait for ExternalSecret refresh or force sync
 2. Token expired - regenerate token and update Key Vault
 3. RBAC policy incorrect - verify policy.csv in argocd-rbac-cm
 
 **Solution:**
+
 ```bash
 # Force ExternalSecret sync
 kubectl annotate externalsecret platform-api-secrets -n platform \
@@ -172,6 +182,7 @@ kubectl rollout restart deployment platform-api -n platform
 **Symptom:** Platform API logs show "connection refused"
 
 **Solution:** Verify the ConfigMap has the correct server URL:
+
 ```bash
 kubectl get configmap platform-api-config -n platform -o yaml | grep ARGOCD_SERVER_URL
 
@@ -188,6 +199,7 @@ kubectl get configmap platform-api-config -n platform -o yaml | grep ARGOCD_SERV
 ## Automation (Future Enhancement)
 
 Consider creating a Terraform module or Helm hook to automate:
+
 1. Argo CD service account creation via ConfigMap patches
 2. Token generation via Argo CD API (not CLI)
 3. Key Vault secret provisioning

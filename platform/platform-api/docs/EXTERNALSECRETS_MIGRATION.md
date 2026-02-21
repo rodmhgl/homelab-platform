@@ -4,7 +4,6 @@ This document describes the migration from static Secret resources to External S
 
 ## What Changed
 
-### Before (Static Secrets)
 ```yaml
 # secret.yaml — secrets hardcoded in Git (placeholder values)
 apiVersion: v1
@@ -18,12 +17,14 @@ stringData:
 ```
 
 **Problems:**
+
 - Secrets were committed to Git (even if empty)
 - Manual secret rotation required redeploying the Secret
 - No audit trail for secret access
 - Risk of accidentally committing real credentials
 
 ### After (External Secrets Operator)
+
 ```yaml
 # externalsecrets/platform-api-secrets.yaml
 apiVersion: external-secrets.io/v1beta1
@@ -43,6 +44,7 @@ spec:
 ```
 
 **Benefits:**
+
 - ✅ Zero secrets in Git
 - ✅ Automatic secret rotation (ESO syncs from Key Vault every 1h)
 - ✅ Centralized secret management in Azure Key Vault
