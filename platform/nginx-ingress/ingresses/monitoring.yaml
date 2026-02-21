@@ -1,0 +1,29 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: monitoring-ingress
+  namespace: monitoring
+  annotations:
+    # Route traffic through NGINX Ingress Controller
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"  # No TLS yet (task #93)
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    # Rate limiting (per IP)
+    nginx.ingress.kubernetes.io/limit-rps: "20"
+    nginx.ingress.kubernetes.io/limit-connections: "10"
+  labels:
+    app.kubernetes.io/name: monitoring-ingress
+    app.kubernetes.io/part-of: homelab-platform
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          # Grafana: /grafana/* → monitoring-grafana.monitoring:80
+          # Grafana configured with serve_from_sub_path: true
+          - path: /grafana
+            pathType: Prefix
+            backend:
+              service:
+                name: monitoring-grafana
+                port:
+                  number: 80

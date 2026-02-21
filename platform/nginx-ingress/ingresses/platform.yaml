@@ -29,18 +29,9 @@ spec:
                 port:
                   number: 80
 
-          # Grafana: /grafana/* → monitoring-grafana.monitoring:80
-          # Grafana configured with serve_from_sub_path: true
-          - path: /grafana
-            pathType: Prefix
-            backend:
-              service:
-                name: monitoring-grafana
-                port:
-                  number: 80
-
           # Portal UI: /* → portal-ui.platform:80
           # Must be last rule (catch-all for root and SPA client-side routes)
+          # Grafana is in a separate Ingress resource (monitoring namespace)
           - path: /
             pathType: Prefix
             backend:
