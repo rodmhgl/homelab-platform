@@ -7,6 +7,7 @@ The NGINX Ingress Controller provides external HTTP/HTTPS access to platform ser
 **Deployment Wave:** 3 (after Crossplane ProviderConfig/XRDs, before Gatekeeper)
 
 **Key Features:**
+
 - Path-based routing on a single external IP
 - Azure LoadBalancer integration (automatic public IP provisioning)
 - Prometheus metrics integration with kube-prometheus-stack
@@ -21,7 +22,7 @@ The NGINX Ingress Controller provides external HTTP/HTTPS access to platform ser
 
 **Type:** Azure LoadBalancer with path-based routing
 
-```
+```text
 External Traffic
     ↓
 Azure LoadBalancer (public IP)
@@ -38,7 +39,7 @@ NGINX Ingress Controller (ingress-nginx namespace)
 ### Routing Rules
 
 | Path Pattern | Backend Service | Namespace | Port | Purpose |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `/api/*` | `platform-api` | `platform` | 80 | Platform API endpoints |
 | `/grafana/*` | `monitoring-grafana` | `monitoring` | 80 | Monitoring dashboards |
 | `/*` | `portal-ui` | `platform` | 80 | Portal UI (React SPA) |
@@ -49,7 +50,7 @@ NGINX Ingress Controller (ingress-nginx namespace)
 
 ## File Structure
 
-```
+```text
 platform/nginx-ingress/
 ├── application.yaml          # Argo CD Application (wave 3)
 ├── values.yaml              # Helm chart overrides
@@ -69,7 +70,8 @@ kubectl get svc -n ingress-nginx ingress-nginx-controller
 ```
 
 Expected output:
-```
+
+```text
 NAME                       TYPE           CLUSTER-IP     EXTERNAL-IP      PORT(S)
 ingress-nginx-controller   LoadBalancer   172.16.x.x     <Azure-IP>       80:xxxxx/TCP,443:xxxxx/TCP
 ```
@@ -79,18 +81,21 @@ If `EXTERNAL-IP` shows `<pending>`, wait 1-2 minutes for Azure to provision the 
 ### 2. Access Platform Services
 
 **Portal UI (React SPA):**
+
 ```bash
 EXTERNAL_IP=$(kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 echo "Portal UI: http://$EXTERNAL_IP/"
 ```
 
 **Platform API:**
+
 ```bash
 curl http://$EXTERNAL_IP/api/v1/health
 # Expected: {"status":"ok"}
 ```
 
 **Grafana (monitoring dashboards):**
+
 ```bash
 echo "Grafana: http://$EXTERNAL_IP/grafana/"
 # Default credentials: admin / prom-operator
@@ -106,6 +111,7 @@ For easier access, add a DNS record in your homelab DNS server (or `/etc/hosts`)
 ```
 
 Then access services via:
+
 - Portal UI: `http://homelab.local/`
 - Platform API: `http://homelab.local/api/v1/health`
 - Grafana: `http://homelab.local/grafana/`
@@ -124,29 +130,33 @@ Then access services via:
 ### Resource Limits (Homelab-Optimized)
 
 **Controller:**
+
 - Requests: 100m CPU, 256Mi memory
 - Limits: 500m CPU, 512Mi memory
 - Replicas: 1 (scale to 2+ for HA)
 
 **Default Backend:**
+
 - Requests: 10m CPU, 20Mi memory
 - Limits: 20m CPU, 40Mi memory
 
 ### Security Configuration
 
 **Pod Security:**
+
 - Non-root user (UID 101)
 - Seccomp profile: `RuntimeDefault`
 - Capabilities: Drop ALL, add only `NET_BIND_SERVICE`
 
 **Container Security:**
+
 - Read-only rootfs: `false` (NGINX requires writable `/tmp` for buffering)
 - `allowPrivilegeEscalation: false`
 
 ### NGINX Configuration Highlights
 
 | Setting | Value | Purpose |
-|---|---|---|
+| --- | --- | --- |
 | `proxy-body-size` | 50m | Platform API may accept scaffold template uploads |
 | `proxy-read-timeout` | 60s | Standard timeout for API requests |
 | `limit-rps` | 20 | Rate limiting per IP (homelab-sized) |
@@ -157,11 +167,13 @@ Then access services via:
 ### Monitoring Integration
 
 **Prometheus metrics enabled:**
+
 - ServiceMonitor with label `prometheus: monitoring` (matches kube-prometheus-stack selector)
 - Metrics endpoint: `:10254/metrics`
 - Scraped automatically by Prometheus (wave 8)
 
 **Available metrics:**
+
 - `nginx_ingress_controller_requests` — Request count by status code
 - `nginx_ingress_controller_request_duration_seconds` — Request latency
 - `nginx_ingress_controller_nginx_process_connections` — Active connections
@@ -286,11 +298,14 @@ for i in {1..30}; do curl -s -o /dev/null -w "%{http_code}\n" http://$EXTERNAL_I
 **Cause:** Azure provisioning delay or insufficient permissions
 
 **Fix:**
+
 1. Wait 2-3 minutes (Azure LoadBalancer provisioning can be slow)
 2. Check AKS service principal has Network Contributor role on VNet:
+
    ```bash
    az role assignment list --scope /subscriptions/<sub-id>/resourceGroups/<rg-name>/providers/Microsoft.Network/virtualNetworks/<vnet-name>
    ```
+
 3. Check Azure Portal → Load Balancers for provisioning errors
 
 ### Issue: Portal UI shows 404 for client-side routes (e.g., `/apps`, `/infra`)
@@ -299,12 +314,14 @@ for i in {1..30}; do curl -s -o /dev/null -w "%{http_code}\n" http://$EXTERNAL_I
 
 **Fix:**
 Verify Portal UI's `nginx/default.conf` contains:
+
 ```nginx
 location / {
     root /usr/share/nginx/html;
     try_files $uri /index.html;
 }
 ```
+
 Rebuild Portal UI container if missing.
 
 ### Issue: Platform API returns 404 for `/api/v1/*` requests
@@ -312,6 +329,7 @@ Rebuild Portal UI container if missing.
 **Cause:** Incorrect path rewriting in Ingress annotations
 
 **Fix:**
+
 - Remove `nginx.ingress.kubernetes.io/rewrite-target` annotation if present
 - Platform API expects full paths (e.g., `/api/v1/health`, not `/v1/health`)
 
@@ -321,6 +339,7 @@ Rebuild Portal UI container if missing.
 
 **Fix:**
 Verify `platform/monitoring/values.yaml` contains:
+
 ```yaml
 grafana:
   grafana.ini:
@@ -328,6 +347,7 @@ grafana:
       root_url: http://localhost:3000/grafana
       serve_from_sub_path: true
 ```
+
 Update and re-sync Argo CD Application if missing.
 
 ### Issue: Prometheus doesn't scrape NGINX metrics
@@ -335,11 +355,15 @@ Update and re-sync Argo CD Application if missing.
 **Cause:** ServiceMonitor label mismatch with Prometheus operator selector
 
 **Fix:**
+
 1. Check Prometheus `serviceMonitorSelector`:
+
    ```bash
    kubectl get prometheus -n monitoring -o yaml | grep -A5 serviceMonitorSelector
    ```
+
 2. Verify NGINX ServiceMonitor has matching label:
+
    ```bash
    kubectl get servicemonitor -n ingress-nginx ingress-nginx-controller -o yaml | grep prometheus:
    # Expected: prometheus: monitoring
@@ -350,6 +374,7 @@ Update and re-sync Argo CD Application if missing.
 **Cause:** Backend service doesn't exist or isn't in the expected namespace
 
 **Fix:**
+
 ```bash
 # Verify all backend services exist
 kubectl get svc -n platform platform-api portal-ui
@@ -370,6 +395,7 @@ kubectl get ingress -n platform platform-ingress -o yaml
 **Future state:** Use relative path (`/api`) to route through Ingress
 
 **File to update:** `portal/src/utils/config.ts`
+
 ```typescript
 // Change:
 apiUrl: import.meta.env.VITE_API_URL || '/api'
@@ -382,11 +408,13 @@ apiUrl: import.meta.env.VITE_API_URL || '/api'
 **Scope:** Automated TLS certificate provisioning with Let's Encrypt
 
 **Benefits:**
+
 - HTTPS for all platform services
 - Automatic certificate rotation
 - Browser trust (no self-signed cert warnings)
 
 **Implementation:**
+
 - Install cert-manager (wave 2)
 - Create ClusterIssuer (Let's Encrypt)
 - Update Ingress with TLS annotations
@@ -401,6 +429,7 @@ apiUrl: import.meta.env.VITE_API_URL || '/api'
 **Dashboard ID:** 9614 (Kubernetes Ingress-NGINX) from grafana.com
 
 **Metrics to visualize:**
+
 - Request rate by status code (2xx, 4xx, 5xx)
 - Request latency (p50, p95, p99)
 - Active connections
@@ -410,16 +439,19 @@ apiUrl: import.meta.env.VITE_API_URL || '/api'
 ### Additional Future Work
 
 **Rate limiting refinement:**
+
 - Per-service rate limits (API stricter than Portal UI)
 - Whitelist for platform monitoring tools
 - Burst allowance for legitimate traffic spikes
 
 **Access control:**
+
 - Basic auth for Grafana (instead of default admin password)
 - OAuth2 proxy for SSO integration
 - IP whitelisting for sensitive endpoints
 
 **Observability:**
+
 - Distributed tracing headers (X-Request-ID)
 - Access log shipping to Loki
 - Alert rules for 5xx errors, high latency
