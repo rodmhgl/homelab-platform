@@ -6,6 +6,5 @@ resources:
   - deployment.yaml
   - namespace.yaml
   - rbac.yaml
-  - secret.yaml
   - service.yaml
   - serviceaccount.yaml
