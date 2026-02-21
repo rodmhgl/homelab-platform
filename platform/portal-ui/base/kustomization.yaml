@@ -5,4 +5,5 @@ namespace: platform
 
 resources:
   - deployment.yaml
+  - ingress.yaml
   - service.yaml
