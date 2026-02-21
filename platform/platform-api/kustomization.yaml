@@ -5,13 +5,8 @@ kind: Kustomization
 namespace: platform
 
 resources:
-  - namespace.yaml
-  - serviceaccount.yaml
-  - rbac.yaml
-  - configmap.yaml
-  - externalsecrets  # ExternalSecret resources for Azure Key Vault integration
-  - deployment.yaml
-  - service.yaml
+  - base
+  - externalsecrets  # Directory containing ExternalSecret resources for Azure Key Vault integration
 
 # Common labels applied to all resources
 commonLabels:
