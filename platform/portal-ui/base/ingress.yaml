@@ -18,19 +18,9 @@ spec:
     - host: portal.rdp.azurelaboratory.com
       http:
         paths:
-          # Platform API: /api/* → platform-api.platform:80
-          # Order matters: /api must be before /* to match first
-          - path: /api
-            pathType: Prefix
-            backend:
-              service:
-                name: platform-api
-                port:
-                  number: 80
-
-          # Portal UI: /* → portal-ui.platform:80
-          # Must be last rule (catch-all for root and SPA client-side routes)
-          # Grafana is in a separate Ingress resource (monitoring namespace)
+          # Portal UI: /* → portal-ui.platform:80 (serves React app + proxies /api internally)
+          # Order matters: more specific paths (like /api) must come first, but since
+          # we're using nginx proxy inside portal-ui, we only need the Portal UI route here
           - path: /
             pathType: Prefix
             backend:

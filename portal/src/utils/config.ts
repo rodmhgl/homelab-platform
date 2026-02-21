@@ -1,4 +1,5 @@
 export const config = {
-  apiUrl: import.meta.env.VITE_API_URL || 'http://platform-api.platform.svc.cluster.local',
+  // Empty string = same-origin requests (proxied by nginx to Platform API)
+  apiUrl: import.meta.env.VITE_API_URL || '',
   apiVersion: 'v1',
 };

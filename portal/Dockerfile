@@ -10,8 +10,8 @@ RUN npm ci
 # Copy source and build
 COPY . .
 
-# Build-time environment variable
-ARG VITE_API_URL=http://platform-api.platform.svc.cluster.local
+# Build-time environment variable (empty = use nginx proxy to Platform API)
+ARG VITE_API_URL=
 ENV VITE_API_URL=${VITE_API_URL}
 
 RUN npm run build
