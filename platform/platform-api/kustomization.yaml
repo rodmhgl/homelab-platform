@@ -4,17 +4,17 @@ kind: Kustomization
 namespace: platform
 
 resources:
-- base
-- externalsecrets
+  - base
+  - externalsecrets
 
 # Common labels applied to all resources
 
 # Image transformation (can be overridden via kustomize)
 images:
-- name: <ACR_LOGIN_SERVER>/platform-api
-  newTag: latest
+  - name: homelabplatformacr.azurecr.io/platform-api
+    newTag: v0.1.6
 labels:
-- includeSelectors: true
-  pairs:
-    app.kubernetes.io/managed-by: argocd
-    app.kubernetes.io/part-of: homelab-platform
+  - includeSelectors: true
+    pairs:
+      app.kubernetes.io/managed-by: argocd
+      app.kubernetes.io/part-of: homelab-platform
