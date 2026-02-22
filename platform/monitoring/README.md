@@ -45,6 +45,7 @@ Self-hosted observability platform for the AKS homelab IDP, providing Prometheus
 **Prerequisites:**
 - Argo CD installed (task #6)
 - External Secrets Operator installed (task #31)
+- NGINX Ingress Controller installed (task #90, #95)
 - Grafana admin credentials in bootstrap Key Vault (see `externalsecrets/README.md`)
 
 **Setup Grafana Credentials:**
@@ -107,9 +108,11 @@ kubectl port-forward -n monitoring svc/monitoring-alertmanager 9093:9093
 ```
 
 ### Grafana UI
+
+**Via Ingress (Production):**
 ```bash
-kubectl port-forward -n monitoring svc/monitoring-grafana 3000:80
-# Open http://localhost:3000
+# Access Grafana at public URL
+open http://grafana.rdp.azurelaboratory.com
 
 # Get credentials from Secret (synced from Key Vault)
 kubectl get secret -n monitoring grafana-admin-creds -o jsonpath='{.data.admin-user}' | base64 -d
@@ -119,6 +122,12 @@ echo ""
 
 # Or retrieve from the saved file (if you followed setup instructions)
 cat ~/.grafana-admin-password.txt
+```
+
+**Via Port-Forward (Development):**
+```bash
+kubectl port-forward -n monitoring svc/monitoring-grafana 3000:80
+# Open http://localhost:3000
 ```
 
 ## ServiceMonitor Pattern
