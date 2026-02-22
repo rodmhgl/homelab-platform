@@ -151,32 +151,11 @@ export interface CreateInfraRequest {
 // ========================================
 
 export interface SummaryResponse {
-  score: number;
-  timestamp: string;
-  violations: ViolationSummary;
-  vulnerabilities: VulnerabilitySummary;
-  securityEvents: SecurityEventSummary;
-}
-
-export interface ViolationSummary {
-  total: number;
-  byConstraint: Record<string, number>;
-}
-
-export interface VulnerabilitySummary {
-  total: number;
-  critical: number;
-  high: number;
-  medium: number;
-  low: number;
-}
-
-export interface SecurityEventSummary {
-  total: number;
-  critical: number;
-  error: number;
-  warning: number;
-  notice: number;
+  complianceScore: number;                           // 0-100 percentage
+  totalViolations: number;
+  totalVulnerabilities: number;
+  violationsBySeverity: Record<string, number>;      // e.g., { policy: 2, config: 1 }
+  vulnerabilitiesBySeverity: Record<string, number>; // e.g., { CRITICAL: 5, HIGH: 12 }
 }
 
 export interface Violation {

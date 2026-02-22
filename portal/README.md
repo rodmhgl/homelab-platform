@@ -81,10 +81,10 @@ portal/
 - Service manifest (ClusterIP port 80 → 8080)
 - Argo CD Application (wave 11)
 
-⬜ **Phase 7: Dashboard Components (tasks #79-#84)**
+🔨 **Phase 7: Dashboard Components (tasks #79-#84)**
+- ✅ Applications panel (#79) — Argo CD apps with sync status, health, project, last deployed time
+- ✅ Infrastructure panel (#80) — Crossplane Claims with ready/synced status, connection secrets, creation time
 - Pending: Compliance Score donut chart (#81)
-- Pending: Applications panel (#79)
-- Pending: Infrastructure panel (#80)
 - Pending: Policy Violations table (#82)
 - Pending: Vulnerability Feed (#83)
 - Pending: Security Events timeline (#84)
@@ -202,13 +202,13 @@ Open `http://localhost:8080` in browser.
 
 ## Next Steps
 
-1. **Implement dashboard panels** (tasks #79-#84)
-   - Compliance Score donut chart with Recharts
-   - Applications panel with Argo CD sync button
-   - Infrastructure panel with Crossplane resource tree
-   - Policy Violations table with filters
-   - Vulnerability Feed grouped by image
-   - Security Events timeline with real-time polling
+1. **Implement remaining dashboard panels** (3 of 6 complete)
+   - ✅ Applications panel (#79) — Argo CD apps with sync status, health, last deployed
+   - ✅ Infrastructure panel (#80) — Crossplane Claims with ready/synced status, connection secrets
+   - ✅ Compliance Score panel (#81) — Donut chart with color-coded severity, violations + vulnerabilities breakdown
+   - ⬜ Policy Violations table (#82) — Gatekeeper audit violations with filters
+   - ⬜ Vulnerability Feed (#83) — Trivy CVEs grouped by image
+   - ⬜ Security Events timeline (#84) — Falco alerts with real-time polling
 
 2. **Implement scaffold form** (task #85)
    - Template selector (go-service, python-service)

@@ -6,6 +6,126 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added - Portal UI Compliance Score Panel (2026-02-22)
+
+**Portal UI v0.1.7** - Compliance Score donut chart implementation (#81)
+
+**New Features:**
+- Compliance Score panel displays overall platform compliance (0-100 percentage)
+- Donut chart visualization with Recharts (PieChart with innerRadius for hollow center)
+- Color-coded severity indicators:
+  - Green (≥90): Healthy compliance posture
+  - Amber (70-89): Moderate risk
+  - Red (<70): High risk requiring attention
+- Large centered score number above chart (responsive font size)
+- Breakdown metrics in 2-column grid:
+  - Policy Violations with severity badges (policy, config, security)
+  - Vulnerabilities with CRITICAL/HIGH/MEDIUM/LOW severity badges
+- Auto-refresh every 30 seconds (consistent with other dashboard panels)
+- Loading state, error state, and empty state handling
+- Responsive dashboard layout: 1 column (mobile) → 2 columns (desktop) → 3 columns (wide)
+
+**Critical Bug Fix:**
+- **BLOCKING:** Fixed critical TypeScript type mismatch in `SummaryResponse` interface
+- Previous interface expected speculative field names (`score`, `timestamp`, nested objects)
+- Go API returns completely different structure (`complianceScore`, flat totals, severity maps)
+- **Root cause:** TypeScript types written before reading Go implementation (same issue as #79)
+- **Impact:** Would have caused runtime errors: `Cannot read properties of undefined`
+- **Fix:** Replaced `SummaryResponse` interface to match Go struct JSON tags exactly:
+  ```typescript
+  complianceScore: number;                           // was: score
+  totalViolations: number;                           // was: violations.total
+  totalVulnerabilities: number;                      // was: vulnerabilities.total
+  violationsBySeverity: Record<string, number>;      // new field
+  vulnerabilitiesBySeverity: Record<string, number>; // new field
+  ```
+- Removed unused interfaces: `ViolationSummary`, `VulnerabilitySummary`, `SecurityEventSummary`
+
+**Component Files:**
+- New: `portal/src/components/dashboard/CompliancePanel.tsx` (123 lines)
+- Updated: `portal/src/pages/Dashboard.tsx` (added CompliancePanel + 3-column grid)
+- Updated: `portal/src/api/types.ts` (fixed SummaryResponse interface)
+
+**Chart Implementation Details:**
+- Recharts PieChart with `innerRadius={60}`, `outerRadius={80}` for donut effect
+- `startAngle={90}` to start at top (12 o'clock position)
+- Two-segment data: "Compliant" (colored) + "At Risk" (gray)
+- Creates visual "fill meter" effect (100% compliance = full green circle)
+- Conditional rendering for severity badges (only show non-zero counts)
+
+**Dashboard Layout:**
+- Three-column grid on extra-large screens (xl:grid-cols-3)
+- Two-column grid on desktop (lg:grid-cols-2)
+- Single column on mobile
+- All panels at equal hierarchy (Applications | Infrastructure | Compliance)
+
+**Integration with Platform API:**
+- Consumes `GET /api/v1/compliance/summary` endpoint (#48)
+- Compliance score formula (from api/internal/compliance/handler.go):
+  - `max(0, 100 - (violations × 5) - (critical_cves × 10) - (high_cves × 5) - (critical_events × 15) - (error_events × 8))`
+  - Falco Critical events weighted heaviest (15 points) as active threats vs potential vulnerabilities
+
+**Testing:**
+- TypeScript compilation successful (`npm run build`)
+- No type errors related to SummaryResponse
+- Portal UI builds without warnings
+
+**Documentation Updates:**
+- Updated homelab-platform/CLAUDE.md with CompliancePanel completion
+- Updated homelab-platform/README.md with dashboard panel status (3 of 6 complete)
+- Updated portal/README.md Phase 7 progress
+
+**Related Tasks:**
+- Task #48 ✅ — Platform API compliance summary endpoint (dependency)
+- Task #79 ✅ — Applications panel pattern (reference implementation)
+- Task #80 ✅ — Infrastructure panel pattern (reference implementation)
+- Task #82 (pending) — Policy Violations table
+- Task #83 (pending) — Vulnerability Feed
+- Task #84 (pending) — Security Events timeline
+
+### Added - Portal UI Infrastructure Panel (2026-02-22)
+
+**Portal UI v0.1.5** - Infrastructure Panel implementation (#80)
+
+**New Features:**
+- Infrastructure panel displays Crossplane Claims (StorageBucket + Vault resources)
+- Side-by-side dashboard layout with Applications panel (responsive grid: stacks on mobile, side-by-side on desktop)
+- Status indicators: Ready/Progressing/Failed badges
+- Ready/Synced status visualization with color-coded badges
+- Connection secret name display
+- Creation timestamp with human-readable format ("Xd ago")
+- Auto-refresh every 30 seconds via TanStack Query
+- Summary footer: "Showing X claim(s) (Y ready)"
+- Empty state, loading state, and error state handling
+
+**Type Safety Improvements:**
+- Fixed critical TypeScript type mismatches between frontend and Go API:
+  - `ListClaimsResponse.count` → `ListClaimsResponse.total`
+  - Added missing `ClaimSummary` fields: `synced`, `ready`, `labels`
+  - Renamed `ClaimSummary.createdAt` → `ClaimSummary.creationTimestamp`
+  - Updated `ClaimResource`, `CompositeResource`, `ManagedResource`, `KubernetesEvent` to match Go structs
+  - Added `ResourceRef` interface for resource references
+
+**Component Files:**
+- New: `portal/src/components/dashboard/InfrastructurePanel.tsx` (155 lines)
+- Updated: `portal/src/pages/Dashboard.tsx` (added InfrastructurePanel import + component)
+- Updated: `portal/src/api/types.ts` (comprehensive type alignment with Go API)
+
+**Layout Changes:**
+- Removed `col-span-2` classes from both ApplicationsPanel and InfrastructurePanel
+- Panels now respect two-column grid layout on large screens (>= 1024px)
+- Maintains mobile-friendly vertical stacking on smaller screens
+
+**Deployment:**
+- Portal UI successfully rebuilt and deployed
+- Dashboard now shows both Applications and Infrastructure panels
+- Accessible at `http://portal.rdp.azurelaboratory.com`
+
+**Documentation Updates:**
+- Updated homelab-platform/CLAUDE.md with Infrastructure panel completion
+- Updated homelab-platform/README.md with dashboard panel status
+- Updated portal/README.md Phase 7 progress (2 of 6 panels complete)
+
 ### Fixed - Portal UI Authentication & API Integration (2026-02-21)
 
 **Portal UI v0.1.4** - Fixed critical runtime errors preventing dashboard from loading
