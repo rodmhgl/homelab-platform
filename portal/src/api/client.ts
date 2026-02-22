@@ -42,6 +42,7 @@ class ApiClient {
       ...fetchOptions,
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.apiToken}`,
         ...fetchOptions.headers,
       },
     });
