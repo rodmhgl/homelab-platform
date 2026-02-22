@@ -29,12 +29,12 @@ Self-hosted observability platform for the AKS homelab IDP, providing Prometheus
 ### Grafana
 - **Storage**: 5Gi PVC
 - **Resources**: 100m-200m CPU, 256-512Mi RAM
-- **Admin password**: `admin` (CHANGE IN PRODUCTION)
+- **Admin credentials**: From ExternalSecret `grafana-admin-creds` (Azure Key Vault)
 - **Datasources**: Prometheus (pre-configured)
-- **Dashboard folders**:
-  - Platform — Cluster health, resource usage
-  - Crossplane — Claim status, provisioning time, error rates
-  - Compliance — Gatekeeper violations, Trivy CVEs, Falco alerts
+- **Dashboards**: Auto-loaded via sidecar from ConfigMaps (see `dashboards/README.md`)
+  - **Platform Compliance Overview** (UID: `platform-compliance`) — Compliance score, policy violations, CVE counts, Falco events
+  - **Crossplane Claim Status** (UID: `crossplane-status`) — Infrastructure health, reconciliation rates, Claim lifecycle
+- **Ingress**: `grafana.rdp.azurelaboratory.com` (via NGINX Ingress Controller)
 
 ### Exporters
 - **Node Exporter**: Host-level metrics (CPU, memory, disk, network)

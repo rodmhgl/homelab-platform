@@ -20,14 +20,14 @@ spec:
       repoURL: https://prometheus-community.github.io/helm-charts
       targetRevision: 66.3.1
 
-    ## Platform repo — values.yaml + ExternalSecrets
+    ## Platform repo — values.yaml + ExternalSecrets + Dashboards
     - path: platform/monitoring
       ref: values
       repoURL: https://github.com/rodmhgl/homelab-platform
       targetRevision: main
       directory:
-        ## Pick up values.yaml and externalsecrets/
-        include: "{values.yaml,externalsecrets/grafana-admin-creds.yaml}"
+        ## Pick up values.yaml, externalsecrets/, and dashboard ConfigMaps
+        include: "{values.yaml,externalsecrets/*.yaml,dashboards/configmap-*.yaml}"
         recurse: true
   destination:
     server: https://kubernetes.default.svc
