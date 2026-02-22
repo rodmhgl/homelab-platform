@@ -4,6 +4,8 @@ metadata:
   labels:
     app.kubernetes.io/instance: ingress-nginx
     app.kubernetes.io/name: ingress-nginx
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
   name: ingress-nginx
 ---
 apiVersion: v1
@@ -29,6 +31,8 @@ metadata:
     app.kubernetes.io/name: ingress-nginx
     app.kubernetes.io/part-of: ingress-nginx
     app.kubernetes.io/version: 1.14.3
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
   name: ingress-nginx-admission
   namespace: ingress-nginx
 ---
