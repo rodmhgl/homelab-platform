@@ -8,13 +8,27 @@ class ApiClient {
   }
 
   private buildUrl(path: string, params?: Record<string, string>): string {
-    const url = new URL(`${this.baseUrl}${path}`);
-    if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        url.searchParams.append(key, value);
-      });
+    const fullPath = `${this.baseUrl}${path}`;
+
+    // If baseUrl is absolute (http/https), use URL constructor
+    // Otherwise, for relative URLs (same-origin), use plain string concatenation
+    if (this.baseUrl.startsWith('http://') || this.baseUrl.startsWith('https://')) {
+      const url = new URL(fullPath);
+      if (params) {
+        Object.entries(params).forEach(([key, value]) => {
+          url.searchParams.append(key, value);
+        });
+      }
+      return url.toString();
     }
-    return url.toString();
+
+    // For relative URLs (empty baseUrl or path-only), build query string manually
+    if (!params || Object.keys(params).length === 0) {
+      return fullPath;
+    }
+
+    const queryString = new URLSearchParams(params).toString();
+    return `${fullPath}?${queryString}`;
   }
 
   async request<T>(
