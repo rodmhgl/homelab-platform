@@ -19,8 +19,12 @@ trivy:
   ## Vulnerability database updates
   ## Trivy needs to download the vulnerability DB periodically (new CVEs are published daily)
   ## NOTE: Do not include version tags (:2, :1) - Trivy will pull the latest automatically
-  dbRepository: ghcr.io/aquasecurity/trivy-db
-  javaDbRepository: ghcr.io/aquasecurity/trivy-java-db
+  dbRegistry: "mirror.gcr.io"
+  dbRepository: "aquasec/trivy-db"
+  #dbRepository: ghcr.io/aquasecurity/trivy-db
+  
+  javaDbRegistry: "mirror.gcr.io"
+  javaDbRepository: "aquasec/trivy-java-db"
 
 ## Operator configuration
 operator:
