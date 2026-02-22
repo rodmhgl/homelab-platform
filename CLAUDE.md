@@ -264,13 +264,13 @@ Falco (DaemonSet)
 
 ## Portal UI (`portal/`)
 
-**Status:** Applications panel complete (#79); remaining dashboard panels pending
+**Status:** 3 of 6 dashboard panels complete (Applications, Infrastructure, Compliance Score); remaining panels pending
 
 - **Framework:** React 18 + TypeScript + Vite 6
 - **Styling:** Tailwind CSS 3.4 with custom color palette
 - **State:** TanStack Query 5.62 (server state), React hooks (local state)
 - **Routing:** React Router 6.28 (SPA)
-- **Charts:** Recharts 2.15 (for compliance donut, task #81)
+- **Charts:** Recharts 2.15 (for compliance donut chart)
 - **Runtime:** Nginx 1.27-alpine (multi-stage Docker build)
 
 **Architecture:**
@@ -289,21 +289,31 @@ Falco (DaemonSet)
 - Layout (3 files): `AppShell.tsx`, `Sidebar.tsx`, `Header.tsx` (with platform health indicator)
 - Common components (3 files): `Badge.tsx`, `LoadingSpinner.tsx`, `StatusCard.tsx`
 - Pages (6 files): `Dashboard.tsx`, `Applications.tsx`, `Infrastructure.tsx`, `Compliance.tsx`, `Scaffold.tsx`, `NotFound.tsx`
-- Dashboard panels:
+- Dashboard panels (3 of 6 complete):
   - ✅ **Applications panel** (#79): Cards showing Argo CD apps with sync status, health, project, last deployed time. Auto-refreshes every 30s.
+  - ✅ **Infrastructure panel** (#80): Crossplane Claims with ready/synced status, connection secrets, creation timestamps. Auto-refreshes every 30s.
+  - ✅ **Compliance Score panel** (#81): Donut chart (Recharts) with color-coded severity (green ≥90, amber 70-89, red <70). Breakdown: policy violations + vulnerabilities with severity badges. Auto-refreshes every 30s.
 
-**Known type alignment with Go API:**
-- `ListAppsResponse`: `{ applications: [], total: 0 }` (NOT `apps`/`count`)
-- `ApplicationSummary`: uses `lastDeployed` field (NOT `lastSyncedAt`)
-- TypeScript types must match Go struct JSON tags exactly
+**Critical Type Alignment Pattern (MANDATORY):**
+
+- **Always read Go API struct JSON tags first** before writing TypeScript types
+- Common type mismatches that cause runtime errors:
+  - `ListAppsResponse`: `{ applications: [], total: 0 }` (NOT `apps`/`count`)
+  - `ListClaimsResponse`: `{ claims: [], total: 0 }` (NOT `count`)
+  - `SummaryResponse`: `{ complianceScore: number, totalViolations: number, ... }` (NOT nested objects)
+  - `ApplicationSummary`: uses `lastDeployed` field (NOT `lastSyncedAt`)
+- **Verification:** After writing types, always `npm run build` to catch mismatches before deployment
+- **Root cause of bugs:** Speculative TypeScript types written without reading Go implementation
 
 **Pending work:**
-- Dashboard panels (#80-#84): Infrastructure panel, Compliance Score donut, Policy Violations table, Vulnerability Feed, Security Events timeline
+
+- Dashboard panels (#82-#84): Policy Violations table, Vulnerability Feed, Security Events timeline
 - Scaffold form (#85): Interactive project creation with template selector, storage/vault toggles
 - Detail pages: App detail, Infra detail, Compliance detail
 - AI Ops panel (#86): kagent chat + HolmesGPT integration
 
 **Access:**
+
 ```bash
 # Production (via Ingress)
 open http://portal.rdp.azurelaboratory.com
