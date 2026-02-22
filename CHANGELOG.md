@@ -6,6 +6,73 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed - Trivy Operator CVE Scanning (2026-02-22)
+
+**Trivy Operator Configuration** - Fixed vulnerability scanning to enable real compliance data
+
+**Problem:**
+- Trivy Operator was installed but **not generating any VulnerabilityReport CRDs**
+- Compliance score showed 100% (misleading — no vulnerability data available)
+- Root causes: DB repository configuration + CRI socket access issues
+
+**Fixes Applied:**
+
+1. **DB Repository Configuration** (commit `15ba7fa`)
+   - Removed version tags from DB repository URLs (`:2` and `:1` caused MANIFEST_UNKNOWN errors)
+   - Updated to use AKS mirror: `mirror.gcr.io/aquasec/trivy-db` (no version tag)
+   - Trivy now successfully downloads vulnerability database
+
+2. **Containerd Socket Configuration** (commit `00f5605`)
+   - Added `podTemplateVolumeMounts` to mount `/run/containerd/containerd.sock`
+   - Added `podTemplateVolumes` to expose host containerd socket as `hostPath`
+   - Scan jobs can now access container images from node's CRI
+   - Eliminates ACR authentication errors (uses kubelet's managed identity)
+
+**Configuration Changes:**
+```yaml
+trivy:
+  dbRegistry: "mirror.gcr.io"
+  dbRepository: "aquasec/trivy-db"  # No :2 tag
+  javaDbRegistry: "mirror.gcr.io"
+  javaDbRepository: "aquasec/trivy-java-db"  # No :1 tag
+
+scanJob:
+  podTemplateVolumeMounts:
+    - name: containerd-sock
+      mountPath: /run/containerd/containerd.sock
+      readOnly: true
+  podTemplateVolumes:
+    - name: containerd-sock
+      hostPath:
+        path: /run/containerd/containerd.sock
+        type: Socket
+```
+
+**Impact:**
+- ✅ VulnerabilityReport CRDs are now being generated (8+ reports and counting)
+- ✅ Scanned images: nginx, falco, falcoctl, falcosidekick, ingress-nginx, platform-api, portal-ui
+- ✅ Compliance score will now reflect **actual CVE data** (expected to drop from 100%)
+- ✅ Portal UI Compliance Score panel displays real vulnerability counts
+- ⚠️ Some cache lock errors during concurrent scans (non-blocking, reports still generated)
+
+**Verification:**
+```bash
+# View generated VulnerabilityReports
+kubectl get vulnerabilityreports -A
+
+# Check compliance score with real data
+curl -H "Authorization: Bearer homelab-portal-token" \
+  http://portal.rdp.azurelaboratory.com/api/v1/compliance/summary
+```
+
+**Related Files:**
+- `platform/trivy-operator/values.yaml` — Updated DB repo + CRI socket configuration
+- `platform/trivy-operator/application.yaml` — Argo CD sync wave 7
+
+**Related Tasks:**
+- Task #32 ✅ — Trivy Operator install (original)
+- Task #81 ✅ — Compliance Score panel (now displays real data)
+
 ### Added - Portal UI Compliance Score Panel (2026-02-22)
 
 **Portal UI v0.1.7** - Compliance Score donut chart implementation (#81)

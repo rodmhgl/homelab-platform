@@ -17,7 +17,7 @@ AKS Home Lab Internal Developer Platform (IDP) mono-repo.
 | `platform/gatekeeper-templates/` | ✅ Phase C — 8 ConstraintTemplates (wave 5) |
 | `platform/gatekeeper-constraints/` | ✅ Phase C — 8 Constraints with enforcementAction: deny (wave 6) |
 | `platform/external-secrets/` | ✅ Phase C — ESO Helm install (v0.11.0) + ClusterSecretStore (Workload Identity, wave 3.5). Platform API ExternalSecret resources deployed. Requires Terraform output placeholders. |
-| `platform/trivy-operator/` | ✅ Phase C — Trivy Operator Helm install (v0.32.0) + values.yaml (wave 7). Continuous CVE scanning with VulnerabilityReport CRDs. |
+| `platform/trivy-operator/` | ✅ Phase C — Trivy Operator v0.32.0 (wave 7). **Fixed:** DB repository config + containerd socket access. VulnerabilityReport CRDs now generating successfully. Uses AKS mirror (`mirror.gcr.io`), mounts containerd socket for CRI access, kubelet identity for ACR auth. |
 | `platform/platform-api/` | ✅ Phase D — Platform API Deployment + Service + RBAC (wave 10). Secrets managed via ESO ExternalSecret (github-pat, openai-api-key, argocd-token). |
 | `platform/falco/` | ✅ Phase C — Falco Helm install (v8.0.0, wave 8) + 4 custom rules. Modern eBPF driver. HTTP output to Falcosidekick. Runtime security monitoring for all namespaces except kube-system. |
 | `platform/falcosidekick/` | ✅ Phase C — Falcosidekick Helm install (v0.10.0, wave 9). Webhook output to Platform API. ServiceMonitor enabled for Prometheus. |
@@ -219,6 +219,93 @@ Falco (DaemonSet)
 - DNS name must match Service name (`platform-api.platform.svc.cluster.local`, not `platform-api.platform-api`)
 - Falcosidekick logs show webhook delivery status (`POST OK (200)` or errors)
 - Config updates require pod restart (Helm values don't trigger automatic rollout)
+
+### Trivy Operator — CVE Scanning (wave 7)
+
+**Chart version:** aquasecurity/trivy-operator 0.32.0
+
+**Status:** ✅ **Fixed and operational** — VulnerabilityReport CRDs generating successfully
+
+**Purpose:** Continuous container image vulnerability scanning. Generates VulnerabilityReport CRDs consumed by the Platform API for compliance scoring.
+
+**Critical Configuration Requirements:**
+
+1. **DB Repository (AKS Mirror)**
+   ```yaml
+   trivy:
+     dbRegistry: "mirror.gcr.io"
+     dbRepository: "aquasec/trivy-db"  # NO version tag (:2 causes MANIFEST_UNKNOWN)
+     javaDbRegistry: "mirror.gcr.io"
+     javaDbRepository: "aquasec/trivy-java-db"  # NO version tag (:1 causes errors)
+   ```
+
+2. **Containerd Socket (AKS CRI Access)**
+   ```yaml
+   scanJob:
+     podTemplateVolumeMounts:
+       - name: containerd-sock
+         mountPath: /run/containerd/containerd.sock
+         readOnly: true
+     podTemplateVolumes:
+       - name: containerd-sock
+         hostPath:
+           path: /run/containerd/containerd.sock
+           type: Socket
+   ```
+
+**Why These Are Required:**
+
+- **AKS uses `mirror.gcr.io`** as a registry mirror — Trivy's DB must use this to avoid rate limits
+- **Version tags (`:2`, `:1`)** are auto-added by Trivy for backward compat, but mirror doesn't support them → remove from config
+- **AKS uses containerd** as the CRI (not Docker) — scan jobs MUST mount the containerd socket to access images
+- Without socket: Trivy falls back to remote pulls → ACR authentication errors
+
+**Common Issues:**
+
+1. **No VulnerabilityReports generated:**
+   ```bash
+   kubectl get vulnerabilityreports -A
+   # If empty, check:
+   kubectl logs -n trivy-system deployment/trivy-operator --tail=50
+   ```
+   - Look for `MANIFEST_UNKNOWN` → DB repository has version tag (remove `:2` or `:1`)
+   - Look for `containerd socket not found` → Missing podTemplateVolumeMounts
+   - Look for `ACR UNAUTHORIZED` → Missing containerd socket (forces remote pulls)
+
+2. **Cache lock errors (non-blocking):**
+   ```
+   ERROR: cache may be in use by another process: timeout
+   ```
+   - Occurs when `scanJobsConcurrentLimit` > 1 and multiple jobs scan simultaneously
+   - Reports still get generated — this is a warning, not a failure
+   - Reduce `scanJobsConcurrentLimit` if excessive
+
+3. **Scan jobs fail after Trivy Operator restart:**
+   - Old scan jobs may reference old ConfigMap values
+   - Delete failed jobs: `kubectl delete jobs -n trivy-system -l app=trivy-operator`
+   - Operator will recreate them with new config
+
+**Verification:**
+```bash
+# Check VulnerabilityReports exist
+kubectl get vulnerabilityreports -A
+
+# Inspect a report
+kubectl get vulnerabilityreport -n platform <report-name> -o yaml
+
+# Check scan job logs
+kubectl logs -n trivy-system -l app.kubernetes.io/name=trivy-operator
+
+# View compliance score (should reflect CVE data)
+curl -H "Authorization: Bearer homelab-portal-token" \
+  http://platform-api.platform/api/v1/compliance/summary
+```
+
+**Integration with Compliance Score:**
+- Platform API queries VulnerabilityReports via client-go watches
+- Critical CVEs: -10 points each
+- High CVEs: -5 points each
+- Compliance formula: `max(0, 100 - (violations × 5) - (critical × 10) - (high × 5) - (falco_critical × 15) - (falco_error × 8))`
 
 ## Platform API (`api/`)
 
