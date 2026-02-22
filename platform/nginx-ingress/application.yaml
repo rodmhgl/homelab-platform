@@ -1,44 +1,44 @@
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: nginx-ingress
-  namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "3"
-  labels:
-    app.kubernetes.io/name: nginx-ingress
-    app.kubernetes.io/part-of: homelab-platform
-spec:
-  project: platform
-  sources:
-    # Helm chart source
-    - repoURL: https://kubernetes.github.io/ingress-nginx
-      chart: ingress-nginx
-      targetRevision: 4.14.3
-      helm:
-        valueFiles:
-          - $values/platform/nginx-ingress/values.yaml
-    # Values file source
-    - repoURL: https://github.com/rodmhgl/homelab-platform.git
-      targetRevision: main
-      ref: values
-    # Ingress resources source
-    - repoURL: https://github.com/rodmhgl/homelab-platform.git
-      targetRevision: main
-      path: platform/nginx-ingress/ingresses
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: ingress-nginx
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-      - ServerSideApply=true
-    retry:
-      limit: 5
-      backoff:
-        duration: 5s
-        factor: 2
-        maxDuration: 3m
+# apiVersion: argoproj.io/v1alpha1
+# kind: Application
+# metadata:
+#   name: nginx-ingress
+#   namespace: argocd
+#   annotations:
+#     argocd.argoproj.io/sync-wave: "3"
+#   labels:
+#     app.kubernetes.io/name: nginx-ingress
+#     app.kubernetes.io/part-of: homelab-platform
+# spec:
+#   project: platform
+#   sources:
+#     # Helm chart source
+#     - repoURL: https://kubernetes.github.io/ingress-nginx
+#       chart: ingress-nginx
+#       targetRevision: 4.14.3
+#       helm:
+#         valueFiles:
+#           - $values/platform/nginx-ingress/values.yaml
+#     # Values file source
+#     - repoURL: https://github.com/rodmhgl/homelab-platform.git
+#       targetRevision: main
+#       ref: values
+#     # Ingress resources source
+#     - repoURL: https://github.com/rodmhgl/homelab-platform.git
+#       targetRevision: main
+#       path: platform/nginx-ingress/ingresses
+#   destination:
+#     server: https://kubernetes.default.svc
+#     namespace: ingress-nginx
+#   syncPolicy:
+#     automated:
+#       prune: true
+#       selfHeal: true
+#     syncOptions:
+#       - CreateNamespace=true
+#       - ServerSideApply=true
+#     retry:
+#       limit: 5
+#       backoff:
+#         duration: 5s
+#         factor: 2
+#         maxDuration: 3m
