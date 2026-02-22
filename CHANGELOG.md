@@ -6,6 +6,43 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added - Portal UI Policy Violations Panel (2026-02-22)
+
+**Dashboard Enhancement** - Completed task #82: Policy Violations table panel
+
+**Features:**
+- Scrollable table displaying Gatekeeper audit violations with 5 columns:
+  - Constraint name (policy that was violated)
+  - Constraint kind (with color-coded severity badges: red for security, yellow for policy, blue for other)
+  - Resource path (namespace/kind/name in monospace font)
+  - Namespace (or "-" for cluster-scoped resources)
+  - Violation message (remediation guidance)
+- Auto-refreshes every 30 seconds via TanStack Query
+- Empty state: "✓ No policy violations found" when compliant
+- Sticky table headers for improved UX when scrolling through 20+ violations
+- TypeScript type alignment with Go API (critical bug fix)
+
+**Technical Details:**
+- **Component:** `portal/src/components/dashboard/PolicyViolationsPanel.tsx`
+- **API Integration:** `GET /api/v1/compliance/violations` (Platform API)
+- **Type Safety:** Fixed `Violation` interface to match Go struct JSON tags exactly:
+  - `constraintName` (not `constraint`)
+  - `constraintKind` (not `kind`)
+  - `resource` (not `name`)
+- **Dashboard Progress:** 4 of 6 panels complete (#79, #80, #81, #82)
+
+**Files Changed:**
+- `portal/src/api/types.ts` - Fixed Violation/ListViolationsResponse types
+- `portal/src/components/dashboard/PolicyViolationsPanel.tsx` - NEW
+- `portal/src/pages/Dashboard.tsx` - Added PolicyViolationsPanel to grid
+- `CLAUDE.md` - Updated panel count (25 TS files, 4/6 complete)
+
+**Deployment:**
+- Ready for production (build verified, API tested)
+- Next version: `portal-ui:v0.1.5`
+
+---
+
 ### Fixed - Trivy Operator CVE Scanning (2026-02-22)
 
 **Trivy Operator Configuration** - Fixed vulnerability scanning to enable real compliance data

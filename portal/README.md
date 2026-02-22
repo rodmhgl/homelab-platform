@@ -31,7 +31,7 @@ portal/
 │   │   └── health.ts     # Health check endpoint
 │   ├── components/
 │   │   ├── common/       # Reusable components (Badge, LoadingSpinner, StatusCard)
-│   │   ├── dashboard/    # Dashboard panels (tasks #79-#84, pending)
+│   │   ├── dashboard/    # Dashboard panels (ApplicationsPanel, InfrastructurePanel, CompliancePanel, PolicyViolationsPanel)
 │   │   └── layout/       # Layout components (AppShell, Sidebar, Header)
 │   ├── pages/            # Route pages
 │   │   ├── Dashboard.tsx
@@ -84,8 +84,8 @@ portal/
 🔨 **Phase 7: Dashboard Components (tasks #79-#84)**
 - ✅ Applications panel (#79) — Argo CD apps with sync status, health, project, last deployed time
 - ✅ Infrastructure panel (#80) — Crossplane Claims with ready/synced status, connection secrets, creation time
-- Pending: Compliance Score donut chart (#81)
-- Pending: Policy Violations table (#82)
+- ✅ Compliance Score donut chart (#81) — Color-coded score with violations + vulnerabilities breakdown
+- ✅ Policy Violations table (#82) — Gatekeeper audit violations with constraint details, severity badges
 - Pending: Vulnerability Feed (#83)
 - Pending: Security Events timeline (#84)
 
@@ -202,11 +202,11 @@ Open `http://localhost:8080` in browser.
 
 ## Next Steps
 
-1. **Implement remaining dashboard panels** (3 of 6 complete)
+1. **Implement remaining dashboard panels** (4 of 6 complete)
    - ✅ Applications panel (#79) — Argo CD apps with sync status, health, last deployed
    - ✅ Infrastructure panel (#80) — Crossplane Claims with ready/synced status, connection secrets
    - ✅ Compliance Score panel (#81) — Donut chart with color-coded severity, violations + vulnerabilities breakdown
-   - ⬜ Policy Violations table (#82) — Gatekeeper audit violations with filters
+   - ✅ Policy Violations table (#82) — Gatekeeper audit violations with constraint details, severity badges, scrollable table
    - ⬜ Vulnerability Feed (#83) — Trivy CVEs grouped by image
    - ⬜ Security Events timeline (#84) — Falco alerts with real-time polling
 

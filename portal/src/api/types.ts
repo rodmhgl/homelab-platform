@@ -159,18 +159,16 @@ export interface SummaryResponse {
 }
 
 export interface Violation {
-  constraint: string;
-  kind: string;
-  name: string;
-  namespace?: string;
-  message: string;
-  enforcementAction: string;
-  timestamp: string;
+  constraintName: string;        // Matches json:"constraintName"
+  constraintKind: string;         // Matches json:"constraintKind"
+  resource: string;               // Composite field: "namespace/kind/name" or "kind/name"
+  namespace: string;              // Empty string for cluster-scoped resources
+  message: string;                // May include [action] prefix like "[audit] message"
+  timestamp?: string;             // Optional (omitempty in Go)
 }
 
 export interface ListViolationsResponse {
-  violations: Violation[];
-  count: number;
+  violations: Violation[];        // Only field in response
 }
 
 export interface Vulnerability {

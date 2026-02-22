@@ -1,6 +1,7 @@
 import ApplicationsPanel from '../components/dashboard/ApplicationsPanel';
 import InfrastructurePanel from '../components/dashboard/InfrastructurePanel';
 import CompliancePanel from '../components/dashboard/CompliancePanel';
+import PolicyViolationsPanel from '../components/dashboard/PolicyViolationsPanel';
 
 export default function Dashboard() {
   return (
@@ -11,7 +12,8 @@ export default function Dashboard() {
         <ApplicationsPanel />
         <InfrastructurePanel />
         <CompliancePanel />
-        {/* Additional panels will be added here (tasks #82-#84) */}
+        <PolicyViolationsPanel />
+        {/* Remaining panels: #83 (Vulnerability Feed), #84 (Security Events) */}
       </div>
     </div>
   );
