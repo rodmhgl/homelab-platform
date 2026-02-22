@@ -25,7 +25,7 @@ AKS Home Lab Internal Developer Platform (IDP) mono-repo.
 | `platform/` (remaining) | ⬜ kagent, HolmesGPT |
 | `scaffolds/go-service/` | ✅ Copier template — complete (23 template files: copier.yml, main.go, Dockerfile, k8s/, claims/, CI/CD, Makefile, supporting files) |
 | `scaffolds/python-service/` | ⬜ Copier template (not started) |
-| `portal/` | ✅ Portal UI React app — Vite + React 18 + TypeScript + Tailwind CSS. 22 TypeScript files. API client with full Platform API integration. Layout (Sidebar, Header, AppShell), routing, common components. Multi-stage Dockerfile (Node 22 → Nginx 1.27-alpine). Security: non-root, read-only rootfs, emptyDir volumes. Dashboard panels (#79-#84) + scaffold form (#85) pending. |
+| `portal/` | ✅ Portal UI React app — Vite + React 18 + TypeScript + Tailwind CSS. 22 TypeScript files. API client with full Platform API integration. Layout (Sidebar, Header, AppShell), routing, common components. Multi-stage Dockerfile (Node 22 → Nginx 1.27-alpine). Security: non-root, read-only rootfs, emptyDir volumes. Bearer token auth via `VITE_API_TOKEN`. **Applications panel (#79) complete.** Remaining: Infrastructure (#80), Compliance Score (#81), Policy Violations (#82), Vulnerability Feed (#83), Security Events (#84), Scaffold form (#85). Deployed: `portal.rdp.azurelaboratory.com`. |
 | `api/` | ✅ Platform API (Go + Chi) — scaffold (#51), Argo CD (#42, #43, #89), compliance (#48), infra complete CRUD (#44-#47), Falco webhook (#49). Full GitOps infrastructure management (list/get/create/delete) with three-layer validation. Secrets via ESO (#40, #87). RBAC configured. Event store for Falco runtime security events (in-memory, 1000 events). Argo CD integration complete — service account + RBAC via GitOps (values.yaml), token via one-time bootstrap script. |
 | `cli/` | 🔨 rdp CLI (Go + Cobra) — Root command, config management, version, `rdp status` (#66), `rdp infra list/status` (#68) complete. Pending: interactive create/delete (#69-#71), apps (#67), compliance (#73), secrets (#74), investigate (#75), ask (#76). |
 
@@ -264,7 +264,7 @@ Falco (DaemonSet)
 
 ## Portal UI (`portal/`)
 
-**Status:** React scaffold complete (task #78); dashboard panels pending
+**Status:** Applications panel complete (#79); remaining dashboard panels pending
 
 - **Framework:** React 18 + TypeScript + Vite 6
 - **Styling:** Tailwind CSS 3.4 with custom color palette
@@ -275,24 +275,40 @@ Falco (DaemonSet)
 
 **Architecture:**
 - **API-first:** All data fetched from Platform API via TanStack Query
-- **Build-time config:** `VITE_API_URL` baked into bundle (default: `http://platform-api.platform.svc.cluster.local`)
+- **Build-time config:**
+  - `VITE_API_URL` baked into bundle (default: empty string for same-origin requests)
+  - `VITE_API_TOKEN` baked into bundle (default: `homelab-portal-token`)
+- **URL handling:** Conditional URL building — absolute URLs use `URL` constructor, relative URLs use plain string concatenation
+- **Authentication:** Bearer token sent on all `/api/v1/*` requests (TODO: replace with ExternalSecret + runtime injection)
 - **Security:** Non-root user (UID 1000), read-only rootfs, emptyDir volumes for `/var/cache/nginx` and `/tmp`
 - **Deployment:** 2 replicas, wave 11 (after Platform API wave 10), ClusterIP Service port 80 → 8080
+- **Ingress:** `portal.rdp.azurelaboratory.com` (via platform-ingress)
 
 **Components implemented:**
 - API client layer (9 files): `types.ts`, `client.ts`, endpoint modules (apps, infra, compliance, scaffold, health)
 - Layout (3 files): `AppShell.tsx`, `Sidebar.tsx`, `Header.tsx` (with platform health indicator)
 - Common components (3 files): `Badge.tsx`, `LoadingSpinner.tsx`, `StatusCard.tsx`
 - Pages (6 files): `Dashboard.tsx`, `Applications.tsx`, `Infrastructure.tsx`, `Compliance.tsx`, `Scaffold.tsx`, `NotFound.tsx`
+- Dashboard panels:
+  - ✅ **Applications panel** (#79): Cards showing Argo CD apps with sync status, health, project, last deployed time. Auto-refreshes every 30s.
+
+**Known type alignment with Go API:**
+- `ListAppsResponse`: `{ applications: [], total: 0 }` (NOT `apps`/`count`)
+- `ApplicationSummary`: uses `lastDeployed` field (NOT `lastSyncedAt`)
+- TypeScript types must match Go struct JSON tags exactly
 
 **Pending work:**
-- Dashboard panels (#79-#84): Applications panel, Infrastructure panel, Compliance Score donut, Policy Violations table, Vulnerability Feed, Security Events timeline
+- Dashboard panels (#80-#84): Infrastructure panel, Compliance Score donut, Policy Violations table, Vulnerability Feed, Security Events timeline
 - Scaffold form (#85): Interactive project creation with template selector, storage/vault toggles
 - Detail pages: App detail, Infra detail, Compliance detail
 - AI Ops panel (#86): kagent chat + HolmesGPT integration
 
 **Access:**
 ```bash
+# Production (via Ingress)
+open http://portal.rdp.azurelaboratory.com
+
+# Development (port-forward)
 kubectl port-forward -n platform svc/portal-ui 8080:80
 # Open http://localhost:8080
 ```
