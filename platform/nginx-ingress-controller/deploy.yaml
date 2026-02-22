@@ -18,6 +18,8 @@ metadata:
     app.kubernetes.io/name: ingress-nginx
     app.kubernetes.io/part-of: ingress-nginx
     app.kubernetes.io/version: 1.14.3
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
   name: ingress-nginx
   namespace: ingress-nginx
 ---
@@ -45,6 +47,8 @@ metadata:
     app.kubernetes.io/name: ingress-nginx
     app.kubernetes.io/part-of: ingress-nginx
     app.kubernetes.io/version: 1.14.3
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
   name: ingress-nginx
   namespace: ingress-nginx
 rules:
@@ -135,6 +139,8 @@ metadata:
     app.kubernetes.io/name: ingress-nginx
     app.kubernetes.io/part-of: ingress-nginx
     app.kubernetes.io/version: 1.14.3
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
   name: ingress-nginx-admission
   namespace: ingress-nginx
 rules:
@@ -255,6 +261,8 @@ metadata:
     app.kubernetes.io/name: ingress-nginx
     app.kubernetes.io/part-of: ingress-nginx
     app.kubernetes.io/version: 1.14.3
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
   name: ingress-nginx
   namespace: ingress-nginx
 roleRef:
@@ -275,6 +283,8 @@ metadata:
     app.kubernetes.io/name: ingress-nginx
     app.kubernetes.io/part-of: ingress-nginx
     app.kubernetes.io/version: 1.14.3
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
   name: ingress-nginx-admission
   namespace: ingress-nginx
 roleRef:
@@ -294,7 +304,11 @@ metadata:
     app.kubernetes.io/name: ingress-nginx
     app.kubernetes.io/part-of: ingress-nginx
     app.kubernetes.io/version: 1.14.3
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
   name: ingress-nginx
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -313,6 +327,8 @@ metadata:
     app.kubernetes.io/name: ingress-nginx
     app.kubernetes.io/part-of: ingress-nginx
     app.kubernetes.io/version: 1.14.3
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
   name: ingress-nginx-admission
 roleRef:
   apiGroup: rbac.authorization.k8s.io
