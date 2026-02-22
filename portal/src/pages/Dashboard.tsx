@@ -1,4 +1,5 @@
 import ApplicationsPanel from '../components/dashboard/ApplicationsPanel';
+import InfrastructurePanel from '../components/dashboard/InfrastructurePanel';
 
 export default function Dashboard() {
   return (
@@ -7,7 +8,8 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ApplicationsPanel />
-        {/* Additional panels will be added here (tasks #80-#84) */}
+        <InfrastructurePanel />
+        {/* Additional panels will be added here (tasks #81-#84) */}
       </div>
     </div>
   );

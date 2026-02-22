@@ -60,61 +60,82 @@ export interface SyncRequest {
 // ========================================
 
 export interface ClaimSummary {
-  kind: string;
   name: string;
   namespace: string;
-  status: string;
+  kind: string;
+  status: string; // Ready, Progressing, Failed
+  synced: boolean;
+  ready: boolean;
   connectionSecret?: string;
-  createdAt: string;
+  creationTimestamp: string;
+  labels?: Record<string, string>;
 }
 
 export interface ClaimResource {
-  kind: string;
   name: string;
   namespace: string;
-  status: string;
+  kind: string;
+  labels?: Record<string, string>;
+  annotations?: Record<string, string>;
+  status: string; // Ready, Progressing, Failed
+  synced: boolean;
+  ready: boolean;
   connectionSecret?: string;
-  createdAt: string;
-  composite?: CompositeResource;
+  creationTimestamp: string;
+  resourceRef?: ResourceRef;
 }
 
 export interface CompositeResource {
-  kind: string;
   name: string;
+  kind: string;
+  labels?: Record<string, string>;
   status: string;
-  createdAt: string;
-  managedResources?: ManagedResource[];
+  synced: boolean;
+  ready: boolean;
+  creationTimestamp: string;
+  resourceRefs?: ResourceRef[];
 }
 
 export interface ManagedResource {
-  kind: string;
   name: string;
+  kind: string;
+  group: string;
+  labels?: Record<string, string>;
   status: string;
-  ready: boolean;
   synced: boolean;
-  createdAt: string;
+  ready: boolean;
+  externalName?: string; // Azure resource name
+  creationTimestamp: string;
+  message?: string; // Latest status message
+}
+
+export interface ResourceRef {
+  name: string;
+  kind: string;
+  apiVersion?: string;
 }
 
 export interface ListClaimsResponse {
   claims: ClaimSummary[];
-  count: number;
+  total: number;
 }
 
 export interface GetResourceResponse {
   claim: ClaimResource;
-  events?: KubernetesEvent[];
+  composite?: CompositeResource;
+  managed: ManagedResource[];
+  events: KubernetesEvent[];
 }
 
 export interface KubernetesEvent {
-  type: string;
+  type: string; // Normal, Warning
   reason: string;
   message: string;
-  timestamp: string;
-  involvedObject: {
-    kind: string;
-    name: string;
-    namespace: string;
-  };
+  involvedObject: string; // "kind/name"
+  source?: string;
+  count?: number;
+  firstTimestamp: string;
+  lastTimestamp: string;
 }
 
 export interface CreateInfraRequest {
