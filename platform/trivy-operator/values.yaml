@@ -21,10 +21,19 @@ trivy:
   ## NOTE: Do not include version tags (:2, :1) - Trivy will pull the latest automatically
   dbRegistry: "mirror.gcr.io"
   dbRepository: "aquasec/trivy-db"
-  #dbRepository: ghcr.io/aquasecurity/trivy-db
-  
+
   javaDbRegistry: "mirror.gcr.io"
   javaDbRepository: "aquasec/trivy-java-db"
+
+  ## Image source configuration for AKS with containerd
+  ## AKS uses containerd as the CRI, socket is at /run/containerd/containerd.sock
+  ## This allows Trivy to scan images already pulled to the node
+  image:
+    # Use containerd socket to access images on the node
+    imagePullPolicy: IfNotPresent
+
+  # For private registries like ACR, Trivy will use the kubelet's managed identity
+  # which already has AcrPull permissions configured during AKS cluster creation
 
 ## Operator configuration
 operator:
@@ -54,7 +63,8 @@ scanJob:
   scanJobsConcurrentLimit: 3
   scanJobsRetryDelay: 30s
 
-  ## Resource limits for scan jobs (each scan runs in a separate Job pod)
+  ## Mount containerd socket for image access (AKS uses containerd CRI)
+  ## This allows Trivy to scan images that are already pulled to the node
   podTemplateContainerSecurityContext:
     allowPrivilegeEscalation: false
     capabilities:
@@ -73,6 +83,18 @@ scanJob:
     requests:
       cpu: 200m
       memory: 256Mi
+
+  ## Volume mounts for containerd socket (AKS CRI)
+  podTemplateVolumeMounts:
+    - name: containerd-sock
+      mountPath: /run/containerd/containerd.sock
+      readOnly: true
+
+  podTemplateVolumes:
+    - name: containerd-sock
+      hostPath:
+        path: /run/containerd/containerd.sock
+        type: Socket
 
 ## VulnerabilityReport settings
 vulnerabilityReports:
