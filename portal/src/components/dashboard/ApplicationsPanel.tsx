@@ -84,9 +84,9 @@ function ApplicationCard({ app }: ApplicationCardProps) {
         </div>
 
         <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-600">Last Synced:</span>
+          <span className="text-gray-600">Last Deployed:</span>
           <span className="font-medium text-gray-900">
-            {formatTimestamp(app.lastSyncedAt)}
+            {formatTimestamp(app.lastDeployed)}
           </span>
         </div>
       </div>
@@ -139,7 +139,7 @@ export default function ApplicationsPanel() {
         </div>
       )}
 
-      {data && data.apps.length === 0 && (
+      {data && data.applications.length === 0 && (
         <div className="py-8 text-center">
           <p className="text-gray-500">No applications found</p>
           <p className="text-sm text-gray-400 mt-1">
@@ -148,16 +148,16 @@ export default function ApplicationsPanel() {
         </div>
       )}
 
-      {data && data.apps.length > 0 && (
+      {data && data.applications.length > 0 && (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {data.apps.map((app) => (
+            {data.applications.map((app) => (
               <ApplicationCard key={app.name} app={app} />
             ))}
           </div>
 
           <div className="mt-4 pt-4 border-t border-gray-200 text-sm text-gray-600">
-            Showing {data.apps.length} application{data.apps.length !== 1 ? 's' : ''}
+            Showing {data.applications.length} application{data.applications.length !== 1 ? 's' : ''}
           </div>
         </>
       )}

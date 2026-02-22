@@ -12,7 +12,8 @@ export interface ApplicationSummary {
   namespace: string;
   repoURL: string;
   path: string;
-  lastSyncedAt?: string;
+  revision?: string;
+  lastDeployed?: string;
 }
 
 export interface Application extends ApplicationSummary {
@@ -45,8 +46,8 @@ export interface Application extends ApplicationSummary {
 }
 
 export interface ListAppsResponse {
-  apps: ApplicationSummary[];
-  count: number;
+  applications: ApplicationSummary[];
+  total: number;
 }
 
 export interface SyncRequest {
