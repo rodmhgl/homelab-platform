@@ -109,7 +109,7 @@ export default function InfrastructurePanel() {
   const readyCount = data?.claims.filter((c) => c.ready).length ?? 0;
 
   return (
-    <StatusCard title="Infrastructure" className="col-span-2">
+    <StatusCard title="Infrastructure">
       {isLoading && (
         <div className="py-8">
           <LoadingSpinner message="Loading infrastructure claims..." />

@@ -123,7 +123,7 @@ export default function ApplicationsPanel() {
   });
 
   return (
-    <StatusCard title="Applications" className="col-span-2">
+    <StatusCard title="Applications">
       {isLoading && (
         <div className="py-8">
           <LoadingSpinner message="Loading applications..." />
