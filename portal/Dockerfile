@@ -5,16 +5,26 @@ WORKDIR /build
 
 # Install dependencies (cached layer)
 COPY package.json package-lock.json ./
-RUN npm ci 
+RUN npm ci
 
 # Copy source and build
 COPY . .
 
-# Build-time environment variable (empty = use nginx proxy to Platform API)
+# Build-time environment variables
 ARG VITE_API_URL=
+ARG BUILD_VERSION=dev
+ARG BUILD_COMMIT=unknown
+ARG BUILD_DATE=unknown
+
 ENV VITE_API_URL=${VITE_API_URL}
 
+# Add version info as a file for runtime access
+RUN echo "{\"version\":\"${BUILD_VERSION}\",\"commit\":\"${BUILD_COMMIT}\",\"buildDate\":\"${BUILD_DATE}\"}" > version.json
+
 RUN npm run build
+
+# Copy version info to dist
+RUN cp version.json dist/
 
 # Runtime stage
 FROM nginx:1.27-alpine
