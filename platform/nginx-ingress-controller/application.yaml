@@ -13,6 +13,11 @@ spec:
     repoURL: https://github.com/rodmhgl/homelab-platform.git
     targetRevision: HEAD
     path: platform/nginx-ingress-controller
+    directory:
+        ## Pick up values.yaml and externalsecrets/
+        exclude: "application.yaml"
+        recurse: true
+
   destination:
     server: https://kubernetes.default.svc
     namespace: ingress-nginx
