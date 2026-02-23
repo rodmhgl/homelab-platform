@@ -191,18 +191,13 @@ export interface ListVulnerabilitiesResponse {
 export interface SecurityEvent {
   timestamp: string;
   rule: string;
-  priority: string;
+  severity: string;
   message: string;
-  source: string;
-  tags: string[];
-  output: string;
-  outputFields: Record<string, unknown>;
-  hostname: string;
+  resource?: string;
 }
 
 export interface ListSecurityEventsResponse {
   events: SecurityEvent[];
-  count: number;
 }
 
 // ========================================
