@@ -6,6 +6,47 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added - Portal UI Vulnerability Feed Panel (2026-02-23)
+
+**Portal UI Enhancement** - Completed task #83: Dashboard panel 5 of 6
+
+**Features:**
+
+**CVE Visibility Dashboard:**
+- **Trivy Integration** - Displays vulnerability scan results from Trivy Operator VulnerabilityReport CRDs
+- **Scrollable Table** - 5 columns: Severity badge, CVE ID (clickable link), Image name (truncated), Package, Fixed version
+- **Color-coded Severity** - Red (CRITICAL/HIGH), Yellow (MEDIUM/LOW), Gray (UNKNOWN)
+- **Smart Image Truncation** - Preserves registry + tag, shortens middle path, full path on hover tooltip
+- **Summary Footer** - Shows CVE count across unique images (e.g., "15 CVEs found across 3 images")
+- **Auto-refresh** - 30-second polling via TanStack Query
+
+**Critical Type Fix:**
+- **TypeScript Alignment** - Fixed 6 incorrect field names in `Vulnerability` interface:
+  - `vulnerabilityID` → `cveId` ✅
+  - `resource` → `image` ✅
+  - `package` → `affectedPackage` ✅
+  - Added missing `workload` field ✅
+  - Removed speculative fields (`installedVersion`, `title`, `publishedDate`) ✅
+- **Root Cause Prevention** - Verified against `api/internal/compliance/types.go` JSON tags before implementation
+- **Build Validation** - `npm run build` passes with no TypeScript errors
+
+**Technical Implementation:**
+- **Pattern Consistency** - Follows PolicyViolationsPanel table structure for maintainability
+- **External Links** - CVE IDs link to NVD/vendor advisories if `primaryLink` exists
+- **Empty State** - Positive message: "✓ No vulnerabilities detected" + "All scanned images are free of known CVEs"
+- **Loading State** - Spinner with "Scanning container images for CVEs..." message
+
+**Files Added:**
+- `portal/src/components/dashboard/VulnerabilityFeedPanel.tsx` - 157 lines (NEW)
+
+**Files Modified:**
+- `portal/src/api/types.ts` - Fixed `Vulnerability` interface to match Go API struct
+- `portal/src/pages/Dashboard.tsx` - Integrated VulnerabilityFeedPanel into dashboard grid
+
+**Dashboard Progress:** 5 of 6 panels complete. Remaining: Security Events (#84).
+
+---
+
 ### Added - Platform API Secrets Endpoint (2026-02-23)
 
 **Platform API Enhancement** - Completed task #50: GET /api/v1/secrets/:namespace endpoint

@@ -25,7 +25,7 @@ AKS Home Lab Internal Developer Platform (IDP) mono-repo.
 | `platform/` (remaining) | ⬜ kagent, HolmesGPT |
 | `scaffolds/go-service/` | ✅ Copier template — complete (23 template files: copier.yml, main.go, Dockerfile, k8s/, claims/, CI/CD, Makefile, supporting files) |
 | `scaffolds/python-service/` | ⬜ Copier template (not started) |
-| `portal/` | ✅ Portal UI React app — Vite + React 18 + TypeScript + Tailwind CSS. 25 TypeScript files. API client with full Platform API integration. Layout (Sidebar, Header, AppShell), routing, common components. Multi-stage Dockerfile (Node 22 → Nginx 1.27-alpine). Security: non-root, read-only rootfs, emptyDir volumes. Bearer token auth via `VITE_API_TOKEN`. **Dashboard panels (4 of 6 complete):** Applications (#79) ✅, Infrastructure (#80) ✅, Compliance Score (#81) ✅, Policy Violations (#82) ✅. Remaining: Vulnerability Feed (#83), Security Events (#84), Scaffold form (#85). Deployed: `portal.rdp.azurelaboratory.com`. |
+| `portal/` | ✅ Portal UI React app — Vite + React 18 + TypeScript + Tailwind CSS. 26 TypeScript files. API client with full Platform API integration. Layout (Sidebar, Header, AppShell), routing, common components. Multi-stage Dockerfile (Node 22 → Nginx 1.27-alpine). Security: non-root, read-only rootfs, emptyDir volumes. Bearer token auth via `VITE_API_TOKEN`. **Dashboard panels (5 of 6 complete):** Applications (#79) ✅, Infrastructure (#80) ✅, Compliance Score (#81) ✅, Policy Violations (#82) ✅, Vulnerability Feed (#83) ✅. Remaining: Security Events (#84), Scaffold form (#85). Deployed: `portal.rdp.azurelaboratory.com`. |
 | `api/` | ✅ Platform API (Go + Chi) — scaffold (#51), Argo CD (#42, #43, #89), compliance (#48), infra complete CRUD (#44-#47), secrets (#50), Falco webhook (#49). Full GitOps infrastructure management (list/get/create/delete) with three-layer validation. Secrets via ESO (#40, #87). RBAC configured. Event store for Falco runtime security events (in-memory, 1000 events). Argo CD integration complete — service account + RBAC via GitOps (values.yaml), token via one-time bootstrap script. |
 | `cli/` | 🔨 rdp CLI (Go + Cobra) — Root command, config management, version, `rdp status` (#66), `rdp infra list/status` (#68) complete. Pending: interactive create/delete (#69-#71), apps (#67), compliance (#73), secrets (#74), investigate (#75), ask (#76). |
 
@@ -353,7 +353,7 @@ curl -H "Authorization: Bearer homelab-portal-token" \
 
 ## Portal UI (`portal/`)
 
-**Status:** 3 of 6 dashboard panels complete (Applications, Infrastructure, Compliance Score); remaining panels pending
+**Status:** 5 of 6 dashboard panels complete (Applications, Infrastructure, Compliance Score, Policy Violations, Vulnerability Feed); 1 panel pending (Security Events)
 
 - **Framework:** React 18 + TypeScript + Vite 6
 - **Styling:** Tailwind CSS 3.4 with custom color palette
@@ -378,10 +378,12 @@ curl -H "Authorization: Bearer homelab-portal-token" \
 - Layout (3 files): `AppShell.tsx`, `Sidebar.tsx`, `Header.tsx` (with platform health indicator)
 - Common components (3 files): `Badge.tsx`, `LoadingSpinner.tsx`, `StatusCard.tsx`
 - Pages (6 files): `Dashboard.tsx`, `Applications.tsx`, `Infrastructure.tsx`, `Compliance.tsx`, `Scaffold.tsx`, `NotFound.tsx`
-- Dashboard panels (3 of 6 complete):
+- Dashboard panels (5 of 6 complete):
   - ✅ **Applications panel** (#79): Cards showing Argo CD apps with sync status, health, project, last deployed time. Auto-refreshes every 30s.
   - ✅ **Infrastructure panel** (#80): Crossplane Claims with ready/synced status, connection secrets, creation timestamps. Auto-refreshes every 30s.
   - ✅ **Compliance Score panel** (#81): Donut chart (Recharts) with color-coded severity (green ≥90, amber 70-89, red <70). Breakdown: policy violations + vulnerabilities with severity badges. Auto-refreshes every 30s.
+  - ✅ **Policy Violations panel** (#82): Scrollable table with Gatekeeper audit violations. Columns: Constraint name, Kind (badge with color coding), Resource path (monospace), Namespace, Violation message. Auto-refreshes every 30s.
+  - ✅ **Vulnerability Feed panel** (#83): CVE table from Trivy scans. Columns: Severity badge (red=CRITICAL/HIGH, yellow=MEDIUM/LOW, gray=UNKNOWN), CVE ID (clickable link to NVD/advisory), Image name (truncated with hover tooltip), Affected package, Fixed version. Summary footer shows CVE count across unique images. Auto-refreshes every 30s.
 
 **Critical Type Alignment Pattern (MANDATORY):**
 
@@ -391,12 +393,13 @@ curl -H "Authorization: Bearer homelab-portal-token" \
   - `ListClaimsResponse`: `{ claims: [], total: 0 }` (NOT `count`)
   - `SummaryResponse`: `{ complianceScore: number, totalViolations: number, ... }` (NOT nested objects)
   - `ApplicationSummary`: uses `lastDeployed` field (NOT `lastSyncedAt`)
+  - `Vulnerability`: `{ image, cveId, affectedPackage, workload }` (NOT `resource`, `vulnerabilityID`, `package`)
 - **Verification:** After writing types, always `npm run build` to catch mismatches before deployment
 - **Root cause of bugs:** Speculative TypeScript types written without reading Go implementation
 
 **Pending work:**
 
-- Dashboard panels (#82-#84): Policy Violations table, Vulnerability Feed, Security Events timeline
+- Dashboard panel (#84): Security Events timeline (Falco alerts)
 - Scaffold form (#85): Interactive project creation with template selector, storage/vault toggles
 - Detail pages: App detail, Infra detail, Compliance detail
 - AI Ops panel (#86): kagent chat + HolmesGPT integration
