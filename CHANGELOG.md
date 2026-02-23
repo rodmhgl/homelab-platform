@@ -6,6 +6,99 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added - CLI Interactive Infrastructure Creation (2026-02-23)
+
+**CLI Enhancement** - Completed tasks #69 and #70: Interactive `rdp infra create` commands with bubbletea TUI
+
+**Features:**
+
+**Interactive StorageBucket Creation:**
+- **`rdp infra create storage`** - Guided wizard for Azure Storage Account provisioning
+  - Sequential field entry: name → namespace → location → tier → redundancy → versioning → repo owner → repo name
+  - **DNS Label Validation**: Enforces Kubernetes DNS label format (`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`, max 63 chars)
+  - **Location Whitelist**: Only allows `southcentralus` and `eastus2` (matches Gatekeeper constraints)
+  - **Git Auto-Detection**: Parses `git remote get-url origin` for both SSH (`git@github.com:owner/repo`) and HTTPS (`https://github.com/owner/repo`) formats
+  - **GitOps Flow**: Commits Claim YAML to `k8s/claims/<name>.yaml` via Platform API, Argo CD syncs within 60s
+  - **Field Options**:
+    - Tier: Standard, Premium
+    - Redundancy: LRS, ZRS, GRS, GZRS, RAGRS, RAGZRS
+    - Versioning: Y/N toggle
+    - Public Access: Always `false` (enforced by Gatekeeper, never exposed to user)
+
+**Interactive Vault Creation:**
+- **`rdp infra create vault`** - Guided wizard for Azure Key Vault provisioning
+  - Sequential field entry: name → namespace → location → SKU → retention days → repo owner → repo name
+  - **DNS Label Validation**: Same strict format as storage
+  - **Retention Validation**: Range check (7-90 days)
+  - **Git Auto-Detection**: Same SSH/HTTPS parsing as storage
+  - **GitOps Flow**: Commits Claim YAML to `k8s/claims/<name>.yaml` via Platform API
+  - **Field Options**:
+    - SKU: standard, premium
+    - Soft Delete Retention: 7-90 days (numeric input with validation)
+
+**TUI Architecture:**
+- **Framework**: Bubbletea (Elm architecture) + Lipgloss (styling) + Bubbles (text inputs)
+- **State Machine**: Welcome → Input Fields → Confirmation → Submitting → Success/Error
+- **Navigation**: Arrow keys (select lists), Enter (advance), Y/N (confirmation), R (retry on error), Q (quit)
+- **Visual Design**:
+  - Title bar with command name
+  - Completed fields shown with ✓ checkmarks above current field
+  - Current field highlighted with input box or selection list
+  - Inline error messages in red
+  - Help text below (gray)
+  - Success screen: Green ✓, commit SHA, file path, connection secret name, repo URL
+  - Error screen: Red ✗, error message, retry/quit options
+
+**Shared TUI Components** (`cli/internal/tui/shared.go`):
+- **Styles**: Title, help, error, success, field label/value, status icons
+- **Validators**: `ValidateDNSLabel()`, `ValidateNamespace()`, `ValidateLocation()`, `ValidateRetentionDays()`
+- **Git Helpers**: `DetectGitRepo()`, `ParseGitURL()` (handles SSH/HTTPS)
+- **View Helpers**: `RenderFieldRow()`, `RenderSpinner()`, `RenderSuccess()`, `RenderError()`
+
+**Platform API Integration:**
+- **Endpoint**: `POST /api/v1/infra`
+- **Request**: `CreateClaimRequest` with kind, name, namespace, parameters, repoOwner, repoName
+- **Response**: `CreateClaimResponse` with commitSha, filePath, connectionSecret, repoUrl
+- **Timeout**: 30 seconds (allows time for GitHub API commits)
+- **Error Handling**: HTTP status codes (400 validation, 500 server error), structured error messages
+
+**Critical Implementation Details:**
+- **No Placeholder Values**: All parameters fully functional (not TODO stubs)
+- **Gatekeeper Alignment**: Location whitelist and publicAccess=false match `CrossplaneClaimLocation` and `CrossplaneNoPublicAccess` constraints
+- **Config Validation**: `ValidateConfig()` called before TUI launch (ensures API URL + auth token present)
+- **Graceful Degradation**: Works outside Git repos (prompts for owner/repo), handles network errors with retry
+
+**Files Added:**
+- `cli/cmd/infra_create.go` - 95 lines (NEW) - Cobra commands for `create storage` and `create vault`
+- `cli/internal/tui/shared.go` - 207 lines (NEW) - Shared TUI styles, validators, Git helpers
+- `cli/internal/tui/create_storage.go` - 480 lines (NEW) - StorageBucket TUI model and logic
+- `cli/internal/tui/create_vault.go` - 418 lines (NEW) - Vault TUI model and logic
+
+**Files Modified:**
+- `cli/go.mod` - Added bubbletea v0.25.0, lipgloss v0.10.0, bubbles v0.18.0
+- `cli/cmd/infra.go` - Updated help text to list `create storage` and `create vault`
+- `cli/README.md` - Added interactive create examples with field descriptions
+- `cli/IMPLEMENTATION_STATUS.md` - Marked #69 and #70 complete, updated progress table
+- `homelab-platform/CLAUDE.md` - Updated `cli/` status line to include bubbletea
+
+**CLI Progress:**
+- ✅ Root command + config management (#65)
+- ✅ Version command
+- ✅ `rdp status` - Platform health summary (#66)
+- ✅ `rdp infra list/status` - Infrastructure Claims (#68)
+- ✅ `rdp infra create storage/vault` - Interactive infra creation (#69, #70) **← NEW**
+- ✅ `rdp apps list/status/sync` - Application management (#67)
+- ⬜ `rdp infra delete` - Interactive infra deletion (#71)
+- ⬜ `rdp compliance` - Policy violations, CVEs, events (#73)
+- ⬜ `rdp secrets` - Secret management (#74)
+- ⬜ `rdp scaffold create` - Interactive project creation (#72)
+- ⬜ `rdp investigate` - HolmesGPT integration (#75)
+- ⬜ `rdp ask` - kagent natural language (#76)
+
+**Next:** Infrastructure deletion command (#71) or compliance commands (#73).
+
+---
+
 ### Added - CLI Application Management Commands (2026-02-23)
 
 **CLI Enhancement** - Completed task #67: `rdp apps` command group

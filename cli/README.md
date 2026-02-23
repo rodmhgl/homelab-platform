@@ -140,11 +140,27 @@ rdp infra status vault my-vault --namespace production
 
 # JSON output for detailed status
 rdp infra status storage my-bucket --json
+
+# Create infrastructure resources (interactive)
+rdp infra create storage  # Interactive wizard for StorageBucket
+rdp infra create vault    # Interactive wizard for Vault
 ```
 
 Shows:
 - **list**: Tabular view of all Claims with name, namespace, kind, status, ready/synced flags, age, and connection secret
 - **status**: Detailed view including Claim details, Composite resource, Managed Azure resources, and recent Kubernetes events
+- **create storage**: Interactive TUI wizard that guides you through creating an Azure Storage Account via Crossplane
+  - Collects: name, namespace, location, tier, redundancy, versioning
+  - Validates DNS labels, location whitelist, and field constraints
+  - Auto-detects Git repository from current directory
+  - Commits Claim YAML to app repo via Platform API
+  - Argo CD syncs within 60 seconds
+- **create vault**: Interactive TUI wizard that guides you through creating an Azure Key Vault via Crossplane
+  - Collects: name, namespace, location, SKU, soft delete retention days
+  - Validates DNS labels, retention range (7-90 days)
+  - Auto-detects Git repository from current directory
+  - Commits Claim YAML to app repo via Platform API
+  - Argo CD syncs within 60 seconds
 
 ### Other Commands
 
@@ -178,7 +194,13 @@ cli/
 │   ├── status.go        # Platform health summary
 │   ├── apps.go          # Application commands (list, status, sync)
 │   ├── infra.go         # Infrastructure commands (list, status)
+│   ├── infra_create.go  # Infrastructure create commands (storage, vault)
 │   └── ...              # Future command groups (scaffold, compliance, etc.)
+├── internal/
+│   └── tui/
+│       ├── shared.go         # Shared TUI styles, validators, helpers
+│       ├── create_storage.go # Storage creation TUI model
+│       └── create_vault.go   # Vault creation TUI model
 ├── go.mod
 └── README.md
 ```
@@ -188,5 +210,8 @@ cli/
 The CLI is built with:
 - **[Cobra](https://github.com/spf13/cobra)**: Command structure and parsing
 - **[Viper](https://github.com/spf13/viper)**: Configuration management (files, env vars, flags)
+- **[Bubbletea](https://github.com/charmbracelet/bubbletea)**: Terminal UI framework for interactive commands
+- **[Lipgloss](https://github.com/charmbracelet/lipgloss)**: Terminal styling for TUI components
+- **[Bubbles](https://github.com/charmbracelet/bubbles)**: Common TUI components (text inputs, etc.)
 
-All commands validate configuration before execution and communicate with the Platform API as a stateless client.
+All commands validate configuration before execution and communicate with the Platform API as a stateless client. Interactive commands use bubbletea for guided, user-friendly experiences.

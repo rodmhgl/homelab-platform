@@ -19,8 +19,11 @@ var infraCmd = &cobra.Command{
 	Long: `Manage Crossplane Claims for Azure infrastructure resources.
 
 Commands:
-  list     List all infrastructure Claims
-  status   Show detailed status for a specific Claim`,
+  list               List all infrastructure Claims
+  status             Show detailed status for a specific Claim
+  create storage     Create StorageBucket Claim (interactive)
+  create vault       Create Vault Claim (interactive)
+  delete             Delete Claim (pending implementation)`,
 }
 
 var infraListCmd = &cobra.Command{

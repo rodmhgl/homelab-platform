@@ -86,9 +86,9 @@ Overall Status: ✓ Platform is operational
 ```
 
 ### ✅ `rdp infra`
-**Status:** List and status commands complete
-**Files:** `cli/cmd/infra.go`
-**Tasks:** #68 (complete), #69-#71 (pending)
+**Status:** List, status, and interactive create commands complete
+**Files:** `cli/cmd/infra.go`, `cli/cmd/infra_create.go`, `cli/internal/tui/*.go`
+**Tasks:** #68, #69, #70 (complete), #71 (pending)
 
 Subcommands:
 - ✅ `rdp infra list [storage|vaults]` — List all Claims (tabular view with filters)
@@ -99,8 +99,16 @@ Subcommands:
   - Flag: `--namespace` (default: default), `--json` (output format)
   - Unicode box format: Claim details, Composite resource, Managed Azure resources, Recent K8s events
   - Supports: `storage` (StorageBucket), `vault` (Vault)
-- ⬜ `rdp infra create storage` — Create StorageBucket Claim (bubbletea interactive)
-- ⬜ `rdp infra create vault` — Create Vault Claim (bubbletea interactive)
+- ✅ `rdp infra create storage` — Create StorageBucket Claim (bubbletea interactive TUI)
+  - Sequential field entry: name, namespace, location, tier, redundancy, versioning
+  - DNS label validation, location whitelist enforcement
+  - Git repository auto-detection (SSH/HTTPS URL parsing)
+  - Commits Claim YAML to app repo via Platform API
+- ✅ `rdp infra create vault` — Create Vault Claim (bubbletea interactive TUI)
+  - Sequential field entry: name, namespace, location, SKU, retention days
+  - DNS label validation, retention range (7-90 days)
+  - Git repository auto-detection (SSH/HTTPS URL parsing)
+  - Commits Claim YAML to app repo via Platform API
 - ⬜ `rdp infra delete <kind> <name>` — Delete Claim (commits removal to app repo)
 
 **Example Output (list):**
@@ -237,7 +245,7 @@ go build -ldflags "\
 | `rdp config` | ✅ Complete | #65 | Config management (init/view/set) |
 | `rdp version` | ✅ Complete | - | Build metadata display |
 | `rdp status` | ✅ Complete | #66 | Platform health aggregation |
-| `rdp infra` | 🔨 Partial | #68 | List/status complete, create/delete pending (#69-#71) |
+| `rdp infra` | 🔨 Partial | #68, #69, #70 | List/status/create complete, delete pending (#71) |
 | `rdp apps` | ✅ Complete | #67 | List/status/sync all working |
 | `rdp scaffold` | ⬜ Pending | - | Interactive project creation (#72) |
 | `rdp compliance` | ⬜ Pending | - | Policy/CVE/event commands (#73) |
