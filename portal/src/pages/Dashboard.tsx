@@ -2,6 +2,7 @@ import ApplicationsPanel from '../components/dashboard/ApplicationsPanel';
 import InfrastructurePanel from '../components/dashboard/InfrastructurePanel';
 import CompliancePanel from '../components/dashboard/CompliancePanel';
 import PolicyViolationsPanel from '../components/dashboard/PolicyViolationsPanel';
+import VulnerabilityFeedPanel from '../components/dashboard/VulnerabilityFeedPanel';
 
 export default function Dashboard() {
   return (
@@ -13,7 +14,8 @@ export default function Dashboard() {
         <InfrastructurePanel />
         <CompliancePanel />
         <PolicyViolationsPanel />
-        {/* Remaining panels: #83 (Vulnerability Feed), #84 (Security Events) */}
+        <VulnerabilityFeedPanel />
+        {/* Remaining panel: #84 (Security Events) */}
       </div>
     </div>
   );

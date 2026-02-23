@@ -172,17 +172,15 @@ export interface ListViolationsResponse {
 }
 
 export interface Vulnerability {
-  vulnerabilityID: string;
-  resource: string;
-  namespace: string;
-  severity: string;
-  score?: number;
-  package: string;
-  installedVersion: string;
-  fixedVersion?: string;
-  title: string;
-  primaryLink?: string;
-  publishedDate?: string;
+  image: string;            // Container image (registry/org/name:tag)
+  namespace: string;        // Kubernetes namespace
+  workload: string;         // ReplicaSet or Deployment name
+  cveId: string;            // CVE identifier (e.g., CVE-2024-12345)
+  severity: string;         // CRITICAL | HIGH | MEDIUM | LOW | UNKNOWN
+  score?: number;           // CVSS v3 score (0-10)
+  affectedPackage: string;  // Package name (e.g., openssl)
+  fixedVersion?: string;    // Fixed version if available
+  primaryLink?: string;     // Link to NVD or vendor advisory
 }
 
 export interface ListVulnerabilitiesResponse {
