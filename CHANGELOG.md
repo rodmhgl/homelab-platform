@@ -6,6 +6,63 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added - Platform API Secrets Endpoint (2026-02-23)
+
+**Platform API Enhancement** - Completed task #50: GET /api/v1/secrets/:namespace endpoint
+
+**Features:**
+
+**Unified Secrets View:**
+- **ExternalSecrets** - Lists ESO CRDs with status (Ready/Error), keys, and sync messages
+- **Connection Secrets** - Lists Crossplane-generated secrets with source Claim references
+- **Security-first** - Exposes metadata only (names, keys, status) — never secret values
+- **Graceful degradation** - If ESO not installed, continues with core Secrets only
+
+**Response Structure:**
+```json
+{
+  "secrets": [
+    {
+      "name": "platform-api-secrets",
+      "namespace": "platform",
+      "kind": "ExternalSecret",
+      "status": "Ready",
+      "message": "secret synced",
+      "creationTimestamp": "2026-02-20T02:09:22Z",
+      "keys": ["ARGOCD_TOKEN", "GITHUB_TOKEN", "OPENAI_API_KEY"],
+      "labels": {...}
+    }
+  ],
+  "total": 1
+}
+```
+
+**Technical Implementation:**
+- **Three-layer pattern:** types.go (DTOs) → client.go (K8s queries) → handler.go (HTTP)
+- **Dual API access:** dynamic client for ExternalSecrets CRDs + typed client for core Secrets
+- **Connection secret linking:** Parses `crossplane.io/claim-name` labels to link back to source Claims
+- **Sorted output:** ExternalSecrets first, then alphabetical by name
+
+**Files Added:**
+- `api/internal/secrets/types.go` - Response DTOs (SecretSummary, ListSecretsResponse)
+- `api/internal/secrets/client.go` - Kubernetes client wrapper (ListExternalSecrets, ListConnectionSecrets)
+- `api/internal/secrets/handler.go` - HTTP handler (HandleListSecrets)
+
+**Files Modified:**
+- `api/main.go` - Handler initialization and route wiring
+- `platform/platform-api/base/deployment.yaml` - Image version v0.1.6 → v0.1.7
+- `platform/platform-api/kustomization.yaml` - Image tag v0.1.6 → v0.1.7
+
+**Deployment:**
+- Platform API v0.1.7 deployed via GitOps (Argo CD + Kustomize)
+- Endpoint tested and verified: `/api/v1/secrets/platform`
+
+**Next Steps:**
+- Task #74: `rdp secrets list/create` CLI command
+- Future: Portal UI secrets management panel
+
+---
+
 ### Added - Grafana Dashboards for Compliance and Infrastructure (2026-02-22)
 
 **Monitoring Stack Enhancement** - Completed task #37: Platform Grafana dashboards

@@ -26,7 +26,7 @@ AKS Home Lab Internal Developer Platform (IDP) mono-repo.
 | `scaffolds/go-service/` | ✅ Copier template — complete (23 template files: copier.yml, main.go, Dockerfile, k8s/, claims/, CI/CD, Makefile, supporting files) |
 | `scaffolds/python-service/` | ⬜ Copier template (not started) |
 | `portal/` | ✅ Portal UI React app — Vite + React 18 + TypeScript + Tailwind CSS. 25 TypeScript files. API client with full Platform API integration. Layout (Sidebar, Header, AppShell), routing, common components. Multi-stage Dockerfile (Node 22 → Nginx 1.27-alpine). Security: non-root, read-only rootfs, emptyDir volumes. Bearer token auth via `VITE_API_TOKEN`. **Dashboard panels (4 of 6 complete):** Applications (#79) ✅, Infrastructure (#80) ✅, Compliance Score (#81) ✅, Policy Violations (#82) ✅. Remaining: Vulnerability Feed (#83), Security Events (#84), Scaffold form (#85). Deployed: `portal.rdp.azurelaboratory.com`. |
-| `api/` | ✅ Platform API (Go + Chi) — scaffold (#51), Argo CD (#42, #43, #89), compliance (#48), infra complete CRUD (#44-#47), Falco webhook (#49). Full GitOps infrastructure management (list/get/create/delete) with three-layer validation. Secrets via ESO (#40, #87). RBAC configured. Event store for Falco runtime security events (in-memory, 1000 events). Argo CD integration complete — service account + RBAC via GitOps (values.yaml), token via one-time bootstrap script. |
+| `api/` | ✅ Platform API (Go + Chi) — scaffold (#51), Argo CD (#42, #43, #89), compliance (#48), infra complete CRUD (#44-#47), secrets (#50), Falco webhook (#49). Full GitOps infrastructure management (list/get/create/delete) with three-layer validation. Secrets via ESO (#40, #87). RBAC configured. Event store for Falco runtime security events (in-memory, 1000 events). Argo CD integration complete — service account + RBAC via GitOps (values.yaml), token via one-time bootstrap script. |
 | `cli/` | 🔨 rdp CLI (Go + Cobra) — Root command, config management, version, `rdp status` (#66), `rdp infra list/status` (#68) complete. Pending: interactive create/delete (#69-#71), apps (#67), compliance (#73), secrets (#74), investigate (#75), ask (#76). |
 
 ## Terraform (`infra/`)
@@ -326,12 +326,13 @@ curl -H "Authorization: Bearer homelab-portal-token" \
 - `GET /api/v1/infra`, `GET /api/v1/infra/storage`, `GET /api/v1/infra/vaults` — ✅ (#44) List Claims
 - `GET /api/v1/infra/{kind}/{name}` — ✅ (#45) Crossplane resource tree query with events
 - `POST /api/v1/infra` — ✅ (#46) Create Claim via GitOps (three-layer validation: request → Gatekeeper → GitHub)
+- `DELETE /api/v1/infra/{kind}/{name}` — ✅ (#47) Delete Claim via GitOps
+- `GET /api/v1/secrets/{namespace}` — ✅ (#50) List ExternalSecrets + connection secrets with metadata
 - `POST /api/v1/webhooks/falco` — ✅ (#49) Falco event webhook receiver
 - `GET /api/v1/compliance/events` — ✅ (#48) Query Falco security events with filtering
 
 **Pending endpoints:**
 
-- `/api/v1/secrets/*` — ExternalSecrets + connection secrets (#50)
 - `/api/v1/investigate/*` — HolmesGPT integration (#52)
 - `/api/v1/agent/ask` — kagent CRD-based interaction (#53)
 - `/api/v1/webhooks/argocd` — Argo CD webhook (#49)
@@ -341,6 +342,7 @@ curl -H "Authorization: Bearer homelab-portal-token" \
 - GitOps for infrastructure: `/api/v1/infra` endpoints commit Claim YAML to app repos, not direct cluster mutations
 - Falco integration: Events arrive at `POST /api/v1/webhooks/falco` via Falcosidekick, stored in EventStore (in-memory circular buffer, 1000 events), queryable via `GET /api/v1/compliance/events`
 - Compliance scoring: Includes Falco events — Critical events × 15, Error events × 8 (heavier than CVEs because they indicate active threats vs potential vulnerabilities)
+- Secrets management: `/api/v1/secrets/{namespace}` provides unified view of ExternalSecrets (ESO) and Crossplane connection secrets. Exposes metadata only (never secret values). Gracefully degrades if ESO not installed.
 - kagent interaction is CRD-based: Platform API creates `Agent`/`Task` resources, not direct HTTP to an LLM
 
 **Event storage notes:**
