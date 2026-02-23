@@ -29,6 +29,23 @@ AKS Home Lab Internal Developer Platform (IDP) mono-repo.
 | `api/` | ✅ Platform API (Go + Chi) — scaffold (#51), Argo CD (#42, #43, #89), compliance (#48), infra complete CRUD (#44-#47), secrets (#50), Falco webhook (#49). Full GitOps infrastructure management (list/get/create/delete) with three-layer validation. Secrets via ESO (#40, #87). RBAC configured. Event store for Falco runtime security events (in-memory, 1000 events). Argo CD integration complete — service account + RBAC via GitOps (values.yaml), token via one-time bootstrap script. |
 | `cli/` | 🔨 rdp CLI (Go + Cobra) — Root command, config management, version, `rdp status` (#66), `rdp infra list/status` (#68) complete. Pending: interactive create/delete (#69-#71), apps (#67), compliance (#73), secrets (#74), investigate (#75), ask (#76). |
 
+## Container Registry
+
+**Azure Container Registry (ACR)**
+- **Registry name:** `homelabplatformacr`
+- **URI:** `homelabplatformacr.azurecr.io`
+- **Authentication:** Kubelet managed identity (AKS nodes have AcrPull permission)
+- **Image naming convention:** `homelabplatformacr.azurecr.io/<component>:<version>`
+
+**Platform images:**
+- `homelabplatformacr.azurecr.io/platform-api:v0.1.x`
+- `homelabplatformacr.azurecr.io/portal-ui:v0.2.x`
+
+**Scaffold-generated app images:**
+- `homelabplatformacr.azurecr.io/<app-name>:<version>`
+
+All Kubernetes manifests should reference this ACR. Gatekeeper policy enforces that images MUST come from this registry.
+
 ## Terraform (`infra/`)
 
 **Runs in Terraform Cloud** — org `rnlabs`, workspace `aks-platform`. Push to `main` triggers an apply. There is no local `terraform apply` workflow; all applies go through TFC.
