@@ -6,6 +6,67 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added - Grafana Dashboards for Compliance and Infrastructure (2026-02-22)
+
+**Monitoring Stack Enhancement** - Completed task #37: Platform Grafana dashboards
+
+**Features:**
+
+**Dashboard 1: Platform Compliance Overview** (UID: `platform-compliance`)
+- **Compliance Score Gauge** - Real-time score (0-100) with color-coded thresholds:
+  - 🔴 Red: <70 (critical issues)
+  - 🟠 Amber: 70-89 (needs attention)
+  - 🟢 Green: ≥90 (healthy)
+- **7 Visualization Panels:**
+  - Compliance score trend over time (time series)
+  - Policy violations by type (pie chart - Gatekeeper constraints)
+  - CVE count by severity (stacked bars: Critical/High/Medium/Low)
+  - Falco security events counter (5-minute window)
+  - Policy violations by namespace (bar chart)
+  - Top 10 vulnerable images (sortable table with severity color-coding)
+- **Metrics:** `gatekeeper_violations`, `vulnerabilityreport_vulnerability_count`, `falcosidekick_inputs_total`
+- **Auto-refresh:** 30 seconds | **Default range:** 6 hours
+
+**Dashboard 2: Crossplane Claim Status** (UID: `crossplane-status`)
+- **Infrastructure Health Stats:**
+  - Total/Ready/Synced/Not Ready Claims
+  - Ready percentage
+  - Reconcile error rate (5-minute)
+- **11 Visualization Panels:**
+  - Claim status trends (Ready/Not Ready/Synced over time)
+  - Reconcile success vs error rates
+  - All Claims table (Name/Namespace/Kind)
+  - Distribution by Type and Namespace (pie charts)
+- **Metrics:** `crossplane_managed_resource_exists/ready/synced`, `crossplane_managed_resource_reconcile_total`
+- **Auto-refresh:** 30 seconds | **Default range:** 6 hours
+
+**Technical Implementation:**
+- **Pattern:** Grafana sidecar auto-discovery (ConfigMaps with label `grafana_dashboard: "1"`)
+- **GitOps:** Dashboards sync via Argo CD from Git (`dashboards/configmap-*.yaml`)
+- **No manual import required** - Sidecar loads dashboards automatically on ConfigMap creation
+
+**Files Added:**
+- `platform/monitoring/dashboards/compliance-overview.json` - 688 lines of Grafana JSON
+- `platform/monitoring/dashboards/configmap-compliance.yaml` - ConfigMap wrapper
+- `platform/monitoring/dashboards/crossplane-status.json` - Dashboard JSON
+- `platform/monitoring/dashboards/configmap-crossplane.yaml` - ConfigMap wrapper
+- `platform/monitoring/dashboards/README.md` - Dashboard docs + troubleshooting guide
+
+**Files Modified:**
+- `platform/monitoring/application.yaml` - Added dashboard ConfigMaps to Argo CD sync (exclude pattern)
+- `platform/monitoring/README.md` - Updated Grafana section with dashboard UIDs
+
+**Access:**
+- Production: `http://grafana.rdp.azurelaboratory.com/`
+- Port-forward: `kubectl port-forward -n monitoring svc/monitoring-grafana 3000:80`
+- Credentials: From ExternalSecret `grafana-admin-creds`
+
+**Commits:**
+- `80aa2a9` feat(monitoring): add Grafana dashboards for compliance and infrastructure
+- `6601d61` fix(monitoring): prevent Kustomize detection in Argo CD directory source
+
+---
+
 ### Added - Portal UI Policy Violations Panel (2026-02-22)
 
 **Dashboard Enhancement** - Completed task #82: Policy Violations table panel
