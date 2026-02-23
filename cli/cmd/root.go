@@ -18,6 +18,7 @@ var (
 type Config struct {
 	APIBaseURL string `mapstructure:"api_base_url"`
 	AuthToken  string `mapstructure:"auth_token"`
+	PortalURL  string `mapstructure:"portal_url"`
 }
 
 // rootCmd represents the base command when called without any subcommands

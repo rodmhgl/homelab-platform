@@ -23,7 +23,7 @@ Commands:
   status             Show detailed status for a specific Claim
   create storage     Create StorageBucket Claim (interactive)
   create vault       Create Vault Claim (interactive)
-  delete             Delete Claim (pending implementation)`,
+  delete             Delete Claim (commits removal to app repo)`,
 }
 
 var infraListCmd = &cobra.Command{
@@ -65,6 +65,7 @@ func init() {
 	rootCmd.AddCommand(infraCmd)
 	infraCmd.AddCommand(infraListCmd)
 	infraCmd.AddCommand(infraStatusCmd)
+	infraCmd.AddCommand(infraDeleteCmd)
 
 	// Flags for list command
 	infraListCmd.Flags().StringVarP(&infraNamespace, "namespace", "n", "", "Filter by namespace (default: all namespaces)")

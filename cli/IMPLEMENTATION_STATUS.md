@@ -86,9 +86,9 @@ Overall Status: ✓ Platform is operational
 ```
 
 ### ✅ `rdp infra`
-**Status:** List, status, and interactive create commands complete
-**Files:** `cli/cmd/infra.go`, `cli/cmd/infra_create.go`, `cli/internal/tui/*.go`
-**Tasks:** #68, #69, #70 (complete), #71 (pending)
+**Status:** Complete (CRUD lifecycle)
+**Files:** `cli/cmd/infra.go`, `cli/cmd/infra_create.go`, `cli/cmd/infra_delete.go`, `cli/internal/tui/*.go`
+**Tasks:** #68, #69, #70, #71 (all complete)
 
 Subcommands:
 - ✅ `rdp infra list [storage|vaults]` — List all Claims (tabular view with filters)
@@ -109,7 +109,11 @@ Subcommands:
   - DNS label validation, retention range (7-90 days)
   - Git repository auto-detection (SSH/HTTPS URL parsing)
   - Commits Claim YAML to app repo via Platform API
-- ⬜ `rdp infra delete <kind> <name>` — Delete Claim (commits removal to app repo)
+- ✅ `rdp infra delete <kind> <name>` — Delete Claim via GitOps
+  - Flags: `--repo-owner` (required), `--repo-name` (required), `--namespace` (default: default), `--force` (skip confirmation), `--json` (output format)
+  - Safety confirmation: User must type Claim name to confirm (unless --force)
+  - Removes `k8s/claims/<name>.yaml` from Git → Argo CD syncs → Crossplane deletes Azure resources
+  - Supports: `storage` (StorageBucket), `vault` (Vault)
 
 **Example Output (list):**
 ```
@@ -154,33 +158,129 @@ Total: 2 applications
 - **Error Handling:** 404 detection, HTTP body capture, graceful degradation
 - **HTTP Timeouts:** 15s (list/status), 30s (sync operations)
 
+### ✅ `rdp scaffold`
+**Status:** Complete
+**Files:** `cli/cmd/scaffold.go`, `cli/internal/tui/create_scaffold.go`
+**Task:** #72
+
+Subcommands:
+- ✅ `rdp scaffold create` — Create new service from template (bubbletea interactive TUI)
+  - Sequential field entry: template selection, project name, description (optional), HTTP port, gRPC enable, gRPC port (if enabled), database enable, storage enable, Key Vault enable, GitHub org, GitHub repo
+  - DNS label validation for project name
+  - Port validation (1024-65535 range), conflict detection (HTTP ≠ gRPC)
+  - Git repository auto-detection (SSH/HTTPS URL parsing)
+  - Extended timeout (60s) for Copier + GitHub + Argo CD operations
+  - Executes Platform API `/api/v1/scaffold` endpoint
+  - Success message includes repo URL, Argo CD app name, platform config path, next steps
+
+**Example Output (success):**
+```
+✓ Service Scaffolded Successfully!
+
+Argo CD will sync this application within 60 seconds.
+
+Details:
+  Repository:        https://github.com/rodmhgl/my-api
+  Argo CD App:       my-api
+  Platform Config:   apps/my-api/config.json
+
+Next Steps:
+  1. Clone repository: git clone https://github.com/rodmhgl/my-api
+  2. Build service:    cd my-api && make build
+  3. Run tests:        make test
+  4. Verify Argo CD:   rdp apps status my-api
+```
+
+**Critical Implementation Details:**
+- **Type Safety:** ScaffoldRequest/ScaffoldResponse match API JSON tags exactly (`enable_keyvault` not `enableKeyVault`)
+- **Conditional Flow:** Skips gRPC port prompt if gRPC disabled
+- **Default Values:** HTTP port 8080, gRPC port 9090 (applied if fields empty)
+- **GoModulePath:** Auto-constructed as `github.com/{org}/{repo}`
+- **RepoPrivate:** Always true (private repos by default)
+- **Progressive Disclosure:** Completed fields shown with checkmarks as user progresses through TUI states
+
 ## Pending Commands
 
-### ⬜ `rdp scaffold`
-**Task:** #72
-**Dependencies:** Platform API `/api/v1/scaffold` endpoint (#51)
-
-Subcommands:
-- `rdp scaffold create` — Create new service from template (bubbletea interactive)
-
-### ⬜ `rdp compliance`
+### ✅ `rdp compliance`
+**Status:** Complete
+**Files:** `cli/cmd/compliance.go`, `cli/cmd/compliance_summary.go`, `cli/cmd/compliance_policies.go`, `cli/cmd/compliance_violations.go`, `cli/cmd/compliance_vulns.go`, `cli/cmd/compliance_events.go`
 **Task:** #73
-**Dependencies:** Platform API `/api/v1/compliance/*` endpoints (#48)
 
 Subcommands:
-- `rdp compliance summary` — Compliance overview
-- `rdp compliance policies` — List Gatekeeper policies
-- `rdp compliance violations` — List policy violations
-- `rdp compliance vulns` — List Trivy CVEs
-- `rdp compliance events` — List Falco security events
+- ✅ `rdp compliance summary` — View overall compliance score and metrics
+  - Flag: `--json` (output format)
+  - Displays: Compliance score (0-100), policy violations count, vulnerabilities by severity (Critical/High breakdown)
+  - Color-coded score: ✓ (≥90 green), ⚠ (70-89 amber), ✗ (<70 red)
+- ✅ `rdp compliance policies` — List active Gatekeeper ConstraintTemplates
+  - Flag: `--json` (output format)
+  - Table: NAME, KIND, SCOPE, DESCRIPTION
+  - Shows cluster-wide vs namespaced policies
+- ✅ `rdp compliance violations` — View policy violations
+  - Flags: `--namespace` (filter), `--json` (output format)
+  - Table: CONSTRAINT, KIND, RESOURCE, NAMESPACE, MESSAGE
+  - Shows Gatekeeper audit violations with detailed context
+- ✅ `rdp compliance vulns` — List vulnerabilities from Trivy scans
+  - Flags: `--severity` (CRITICAL|HIGH|MEDIUM|LOW filter), `--json` (output format)
+  - Table: SEVERITY, CVE-ID, IMAGE, PACKAGE, FIXED, WORKLOAD
+  - Color-coded severity: CRITICAL/HIGH (red), MEDIUM (yellow), LOW (gray)
+  - Summary footer with severity breakdown
+- ✅ `rdp compliance events` — View Falco security events
+  - Flags: `--namespace` (filter), `--severity` (ERROR|WARNING|NOTICE filter), `--since` (time window like "1h", "30m"), `--limit` (max events, default 50), `--json` (output format)
+  - Table: TIME, SEVERITY, RULE, RESOURCE, MESSAGE
+  - Color-coded severity: ERROR (red), WARNING (yellow), NOTICE (white)
+  - Summary footer with severity breakdown
 
-### ⬜ `rdp secrets`
+**Example Output (summary):**
+```
+┌─ Compliance Summary ──────────────────────────────────────┐
+│                                                            │
+│  Compliance Score:  ✓ 92                                  │
+│                                                            │
+│  Policy Violations: 3                                      │
+│  Vulnerabilities:   12 (2 Critical, 5 High)                │
+│                                                            │
+└────────────────────────────────────────────────────────────┘
+```
+
+**Critical Implementation Details:**
+- **Type Safety:** All types match API JSON tags exactly (`complianceScore` is `float64`, `vulnerabilitiesBySeverity` is `map[string]int`, `severity` not `priority`)
+- **Consistent Patterns:** Follows `apps.go`/`infra.go` formatting (tabwriter, color codes, JSON output)
+- **Query Parameters:** Uses `url.Values` for clean parameter encoding (namespace, severity, since, limit filters)
+- **Validation:** Severity enums validated before API call, duration parsing for `--since` flag
+- **Error Handling:** HTTP status codes, body capture, graceful empty state messages
+
+### ✅ `rdp secrets`
+**Status:** Complete
+**Files:** `cli/cmd/secrets.go`, `cli/cmd/secrets_list.go`
 **Task:** #74
-**Dependencies:** Platform API `/api/v1/secrets` endpoint (#50)
 
 Subcommands:
-- `rdp secrets list <namespace>` — List ExternalSecrets + connection secrets
-- `rdp secrets create` — Create ExternalSecret
+- ✅ `rdp secrets list <namespace>` — List ExternalSecrets + connection secrets
+  - Flags: `--kind` (filter: "external" | "connection" | ""), `--json` (output format)
+  - Table: NAME, NAMESPACE, KIND, STATUS, KEYS, SOURCE CLAIM, AGE
+  - Status icons: ✓ (Ready/Synced green), ✗ (Error red), ○ (Unknown gray)
+  - Keys display: Comma-separated for ≤3 keys, "N keys" summary for >3
+  - Source Claim: Shows originating Crossplane Claim for connection secrets
+  - Summary footer: Total count with breakdown by type (ExternalSecrets vs connection secrets)
+- ⬜ `rdp secrets create` — Create ExternalSecret (future enhancement)
+
+**Example Output (list):**
+```
+NAME                NAMESPACE  KIND            STATUS        KEYS                    SOURCE CLAIM              AGE
+----                ---------  ----            ------        ----                    ------------              ---
+demo-storage-conn   default    Secret          ✓ Synced      3 keys                  demo-storage (StorageBucket)  3d
+github-pat          platform   ExternalSecret  ✓ Ready       token                   -                         8d
+api-creds           default    ExternalSecret  ✗ Error       -                       -                         1h
+
+Total: 3 secrets (2 ExternalSecrets, 1 connection secret)
+```
+
+**Critical Implementation Details:**
+- **Type Safety:** All types match API JSON tags exactly (`creationTimestamp` is `time.Time`, `sourceClaim` is `*ResourceRef`)
+- **Client-side Filtering:** `--kind` flag filters response array (API returns all secrets)
+- **Consistent Patterns:** Follows `compliance_violations.go` table formatting, `infra.go` age/status helpers
+- **Error Handling:** 400 (bad request), 404 (namespace not found), 500 (API error) with clear messages
+- **HTTP Timeout:** 15s (list operations)
 
 ### ⬜ `rdp investigate`
 **Task:** #75
@@ -196,12 +296,28 @@ Subcommands:
 Usage:
 - `rdp ask <natural language question>` — Stream response from kagent
 
-### ⬜ `rdp portal`
+### ✅ `rdp portal`
+**Status:** Complete
+**Files:** `cli/cmd/portal.go`, `cli/cmd/portal_open.go`
 **Task:** #77
-**Dependencies:** Portal UI (#78)
 
 Subcommands:
-- `rdp portal open` — Open Portal UI in browser
+- ✅ `rdp portal open` — Open Portal UI in default browser
+  - Flags: `--url` (override Portal URL), `--print` (print URL only, don't open browser)
+  - URL precedence: 1) --url flag → 2) portal_url config → 3) derived from api_base_url → 4) default (http://portal.rdp.azurelaboratory.com)
+  - Cross-platform: Linux/WSL (xdg-open), macOS (open), Windows (cmd /c start)
+  - Graceful fallback: Prints URL with instructions if browser launch fails
+
+**Example Output:**
+```
+Opening Portal UI in browser: http://portal.rdp.azurelaboratory.com
+```
+
+**Critical Implementation Details:**
+- **URL Derivation Patterns:** Handles multiple API URL formats: `api.domain.com`, `api-domain.com`, `platform-api.domain.com`, `platform.domain.com`
+- **Platform Detection:** Uses `runtime.GOOS` to select appropriate browser launcher
+- **No Auth Required:** Pure client-side operation, no API dependency
+- **Config Schema:** Added optional `portal_url` to `Config` struct (backward compatible)
 
 ## Architecture
 
@@ -245,14 +361,14 @@ go build -ldflags "\
 | `rdp config` | ✅ Complete | #65 | Config management (init/view/set) |
 | `rdp version` | ✅ Complete | - | Build metadata display |
 | `rdp status` | ✅ Complete | #66 | Platform health aggregation |
-| `rdp infra` | 🔨 Partial | #68, #69, #70 | List/status/create complete, delete pending (#71) |
+| `rdp infra` | ✅ Complete | #68, #69, #70, #71 | Full CRUD lifecycle (list/status/create/delete) |
 | `rdp apps` | ✅ Complete | #67 | List/status/sync all working |
-| `rdp scaffold` | ⬜ Pending | - | Interactive project creation (#72) |
-| `rdp compliance` | ⬜ Pending | - | Policy/CVE/event commands (#73) |
-| `rdp secrets` | ⬜ Pending | - | Secret management (#74) |
+| `rdp scaffold` | ✅ Complete | #72 | Interactive project creation (template selection, config, features, GitHub) |
+| `rdp compliance` | ✅ Complete | #73 | Summary/policies/violations/vulns/events all working |
+| `rdp secrets` | ✅ Complete | #74 | List command complete; create pending |
 | `rdp investigate` | ⬜ Pending | - | HolmesGPT integration (#75) |
 | `rdp ask` | ⬜ Pending | - | kagent natural language (#76) |
-| `rdp portal` | ⬜ Pending | - | Browser launcher (#77) |
+| `rdp portal` | ✅ Complete | #77 | Browser launcher complete |
 
 ## Known Issues
 
