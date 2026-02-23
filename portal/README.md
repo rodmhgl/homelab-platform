@@ -31,7 +31,7 @@ portal/
 │   │   └── health.ts     # Health check endpoint
 │   ├── components/
 │   │   ├── common/       # Reusable components (Badge, LoadingSpinner, StatusCard)
-│   │   ├── dashboard/    # Dashboard panels (ApplicationsPanel, InfrastructurePanel, CompliancePanel, PolicyViolationsPanel)
+│   │   ├── dashboard/    # Dashboard panels (6 of 6 complete: Applications, Infrastructure, Compliance, PolicyViolations, VulnerabilityFeed, SecurityEvents)
 │   │   └── layout/       # Layout components (AppShell, Sidebar, Header)
 │   ├── pages/            # Route pages
 │   │   ├── Dashboard.tsx
@@ -81,13 +81,13 @@ portal/
 - Service manifest (ClusterIP port 80 → 8080)
 - Argo CD Application (wave 11)
 
-🔨 **Phase 7: Dashboard Components (tasks #79-#84)**
+✅ **Phase 7: Dashboard Components (tasks #79-#84) — COMPLETE**
 - ✅ Applications panel (#79) — Argo CD apps with sync status, health, project, last deployed time
 - ✅ Infrastructure panel (#80) — Crossplane Claims with ready/synced status, connection secrets, creation time
 - ✅ Compliance Score donut chart (#81) — Color-coded score with violations + vulnerabilities breakdown
 - ✅ Policy Violations table (#82) — Gatekeeper audit violations with constraint details, severity badges
-- Pending: Vulnerability Feed (#83)
-- Pending: Security Events timeline (#84)
+- ✅ Vulnerability Feed (#83) — Trivy CVE table with severity badges, clickable links, image/package details
+- ✅ Security Events timeline (#84) — Falco runtime alerts with severity badges, timestamps, resource paths, messages
 
 ⬜ **Phase 8: Scaffold Form (task #85)**
 - Pending: Project creation form with storage/vault toggles
@@ -202,13 +202,13 @@ Open `http://localhost:8080` in browser.
 
 ## Next Steps
 
-1. **Implement remaining dashboard panels** (4 of 6 complete)
+1. ✅ **Core dashboard panels complete** (6 of 6 done)
    - ✅ Applications panel (#79) — Argo CD apps with sync status, health, last deployed
    - ✅ Infrastructure panel (#80) — Crossplane Claims with ready/synced status, connection secrets
    - ✅ Compliance Score panel (#81) — Donut chart with color-coded severity, violations + vulnerabilities breakdown
    - ✅ Policy Violations table (#82) — Gatekeeper audit violations with constraint details, severity badges, scrollable table
-   - ⬜ Vulnerability Feed (#83) — Trivy CVEs grouped by image
-   - ⬜ Security Events timeline (#84) — Falco alerts with real-time polling
+   - ✅ Vulnerability Feed (#83) — Trivy CVEs with severity badges, clickable links, image/package details, summary footer
+   - ✅ Security Events timeline (#84) — Falco runtime alerts with severity badges, timestamps, resource paths, truncated messages with tooltips
 
 2. **Implement scaffold form** (task #85)
    - Template selector (go-service, python-service)

@@ -6,6 +6,72 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added - Portal UI Security Events Panel (2026-02-23)
+
+**Portal UI Enhancement** - Completed task #84: Dashboard panel 6 of 6 — **CORE DASHBOARD COMPLETE**
+
+**Features:**
+
+**Runtime Security Visibility:**
+- **Falco Integration** - Displays real-time security events from Falco via Platform API EventStore
+- **Timeline Table Layout** - 5 columns: Timestamp (formatted), Severity badge, Rule name, Resource (namespace/pod), Message (truncated)
+- **Four-tier Severity Color-coding:**
+  - Red (danger): Critical/Alert/Emergency
+  - Yellow (warning): Error
+  - Blue (info): Warning/Notice
+  - Gray (default): Debug/Informational
+- **Timestamp Formatting** - RFC3339 → human-readable ("Feb 23, 2:30 PM")
+- **Message Truncation** - 100-character limit with full message on hover tooltip
+- **Event Summary Footer** - Shows total event count with "most recent first" indicator
+- **Auto-refresh** - 30-second polling via TanStack Query
+- **Empty State** - Positive message: "✓ No security events detected" + "Falco is monitoring runtime activity across all namespaces"
+
+**Critical Type Fix:**
+- **TypeScript Alignment** - Fixed 5 incorrect fields in `SecurityEvent` interface:
+  - `priority` → `severity` ✅ (matches json:"severity")
+  - `source` → `resource` ✅ (matches json:"resource,omitempty")
+  - Removed speculative fields: `tags`, `output`, `outputFields`, `hostname` ✅
+- **Response Structure Fix** - Removed non-existent `count` field from `ListSecurityEventsResponse`
+- **Root Cause Prevention** - Verified against `api/internal/compliance/types.go` JSON tags (lines 64-71)
+- **Build Validation** - `npm run build` passes with no TypeScript errors
+
+**Technical Implementation:**
+- **Pattern Consistency** - Follows VulnerabilityFeedPanel structure (most recent reference implementation)
+- **Helper Functions:**
+  - `formatTimestamp()` - Converts ISO 8601 to locale string with month/day/time
+  - `truncateMessage()` - Limits output to 100 chars with ellipsis
+  - `getSeverityVariant()` - Maps Falco priorities to Badge color variants
+- **Resource Display** - Monospace font for `namespace/pod` format, shows "-" if not K8s event
+
+**Integration Architecture:**
+```
+Falco (DaemonSet, wave 8)
+  → HTTP output
+  → Falcosidekick (Deployment, wave 9)
+  → Platform API Webhook (POST /api/v1/webhooks/falco)
+  → EventStore (in-memory, 1000 events)
+  → Portal UI (GET /api/v1/compliance/events, 30s polling)
+  → SecurityEventsPanel (Dashboard display)
+```
+
+**Files Added:**
+- `portal/src/components/dashboard/SecurityEventsPanel.tsx` - 136 lines (NEW)
+
+**Files Modified:**
+- `portal/src/api/types.ts` - Fixed `SecurityEvent` + `ListSecurityEventsResponse` interfaces to match Go API
+- `portal/src/pages/Dashboard.tsx` - Integrated SecurityEventsPanel into dashboard grid (replaces placeholder comment)
+
+**Dashboard Progress:** ✅ **6 of 6 panels complete** — Core compliance monitoring dashboard finished!
+
+**Compliance Monitoring Triad Complete:**
+1. **Policy Violations** (static audit) — Gatekeeper admission policy failures
+2. **Vulnerability Feed** (image scanning) — Trivy CVE detection
+3. **Security Events** (runtime threats) — Falco behavioral monitoring
+
+**Next:** Scaffold form (#85), AI Ops panel (#86), detail pages.
+
+---
+
 ### Added - Portal UI Vulnerability Feed Panel (2026-02-23)
 
 **Portal UI Enhancement** - Completed task #83: Dashboard panel 5 of 6
