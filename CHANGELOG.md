@@ -6,6 +6,101 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added - CLI Application Management Commands (2026-02-23)
+
+**CLI Enhancement** - Completed task #67: `rdp apps` command group
+
+**Features:**
+
+**Full Argo CD Application Lifecycle:**
+- **`rdp apps list`** - List all applications with filtering
+  - Flags: `-p/--project` (filter by Argo CD project), `-j/--json` (machine-readable output)
+  - Table format: NAME, PROJECT, SYNC, HEALTH, REPO, PATH, AGE, LAST DEPLOYED
+  - Status icons: ✓ (Synced+Healthy), ⚠ (OutOfSync/Progressing), ✗ (Degraded/Unknown)
+  - Age formatting: human-readable (2d, 5h, 30m) using shared `formatAge()` helper
+  - Empty state: "No applications found."
+
+- **`rdp apps status <name>`** - Detailed application inspection
+  - Flag: `-j/--json` (machine-readable output)
+  - Unicode box format showing:
+    - Application Info: Name, namespace, project, age
+    - Source: Repo URL, path, target revision, current revision
+    - Sync Status: Status icon + message, compared-to, last sync time
+    - Health Status: Status icon + message
+    - Resources: Table of first 10 managed resources (kind, namespace, name, status, health)
+    - Recent History: Last 5 deployments with revision + timestamp
+    - Conditions: Warning/error conditions with messages
+  - 404 handling: "Application 'name' not found"
+  - Truncation: Long messages/URLs intelligently shortened with "..." suffix
+
+- **`rdp apps sync <name>`** - Trigger async sync operations
+  - Flags: `--prune` (delete resources not in Git), `--dry-run` (preview without applying), `--revision <rev>` (sync specific commit)
+  - Async operation: Returns immediately with operation phase, guides user to check progress with `rdp apps status`
+  - Confirms sync initiated with clear summary (Operation: Sync, Phase: Running, Prune: false, Dry Run: false)
+
+**Critical Type Safety:**
+- **All CLI types match API JSON tags exactly**:
+  - `ListAppsResponse.applications` (NOT `apps`) ✅
+  - `ApplicationSummary.lastDeployed` (NOT `lastSyncedAt`) ✅
+  - `Application.status.sync.status` (Synced/OutOfSync/Unknown) ✅
+  - `Application.status.health.status` (Healthy/Progressing/Degraded/Suspended/Missing) ✅
+- **Root Cause Prevention** - Verified against `api/internal/argocd/types.go` before implementation
+- **Build Validation** - `go build` passes with no compilation errors
+
+**Consistent Patterns:**
+- **Parent Command Structure** - `appsCmd` with no `RunE` (container only), three subcommands
+- **Config Validation** - `ValidateConfig()` before all API calls (matches `infra.go` pattern)
+- **HTTP Timeouts** - 15s (list/status), 30s (sync operations)
+- **Error Handling** - Structured error wrapping (`fmt.Errorf("context: %w", err)`), HTTP body capture on failure
+- **Formatting Helpers**:
+  - `formatSyncIcon()` - Status-aware icons (✓/⚠/✗)
+  - `formatSyncStatus()` - Prepends icon to status text
+  - `formatHealthIcon()` / `formatHealthStatus()` - Health-aware icons and text
+  - `truncateString()` - Smart truncation with ellipsis
+  - `formatAge()` - Reused from `infra.go` for consistency
+
+**Type Conflict Resolution:**
+- **Fixed:** `status.go` type collisions with `apps.go`
+  - `HealthStatus` → `APIHealthStatus` ✅
+  - `ApplicationStatus` → `ApplicationsStatus` ✅
+  - `formatHealthIcon()` → `formatAPIHealthIcon()` ✅
+- **Fixed:** `status.go` API response structure to match actual API:
+  - `{ apps: [] }` → `{ applications: [] }` ✅
+  - `app.health` → `app.healthStatus` ✅
+
+**Integration Points:**
+- **Platform API Endpoints:**
+  - `GET /api/v1/apps` - List applications (returns `ListAppsResponse`)
+  - `GET /api/v1/apps/{name}` - Get application details (returns `Application`)
+  - `POST /api/v1/apps/{name}/sync` - Trigger sync (accepts `SyncRequest`, returns `SyncResponse`)
+- **Argo CD Backend** - CLI → Platform API → Argo CD API (service account + RBAC configured via GitOps)
+
+**Files Added:**
+- `cli/cmd/apps.go` - 700 lines (NEW) - Complete implementation with all subcommands
+
+**Files Modified:**
+- `cli/cmd/status.go` - Fixed type collisions (renamed types to avoid `apps.go` conflicts)
+- `cli/README.md` - Added Application Management section with examples
+- `homelab-platform/CLAUDE.md` - Updated `cli/` status line
+- `homelab-platform/README.md` - Updated `cli/` status line
+
+**CLI Progress:**
+- ✅ Root command + config management (#65)
+- ✅ Version command
+- ✅ `rdp status` - Platform health summary (#66)
+- ✅ `rdp infra list/status` - Infrastructure Claims (#68)
+- ✅ `rdp apps list/status/sync` - Application management (#67) **← NEW**
+- ⬜ `rdp infra create/delete` - Interactive infra ops (#69-#71)
+- ⬜ `rdp compliance` - Policy violations, CVEs, events (#73)
+- ⬜ `rdp secrets` - Secret management (#74)
+- ⬜ `rdp scaffold create` - Interactive project creation (#72)
+- ⬜ `rdp investigate` - HolmesGPT integration (#75)
+- ⬜ `rdp ask` - kagent natural language (#76)
+
+**Next:** Interactive infrastructure operations with bubbletea (#69-#71).
+
+---
+
 ### Added - Portal UI Security Events Panel (2026-02-23)
 
 **Portal UI Enhancement** - Completed task #84: Dashboard panel 6 of 6 — **CORE DASHBOARD COMPLETE**

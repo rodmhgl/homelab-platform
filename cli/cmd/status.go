@@ -29,13 +29,13 @@ func init() {
 
 // PlatformStatus holds the aggregated status from multiple API endpoints
 type PlatformStatus struct {
-	APIHealth      HealthStatus
+	APIHealth      APIHealthStatus
 	Compliance     ComplianceStatus
-	Applications   ApplicationStatus
+	Applications   ApplicationsStatus
 	Infrastructure InfraStatus
 }
 
-type HealthStatus struct {
+type APIHealthStatus struct {
 	Healthy bool
 	Ready   bool
 	Error   string
@@ -49,7 +49,7 @@ type ComplianceStatus struct {
 	Error       string
 }
 
-type ApplicationStatus struct {
+type ApplicationsStatus struct {
 	Total    int
 	Healthy  int
 	Degraded int
@@ -98,8 +98,8 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func checkAPIHealth(client *http.Client, baseURL, token string) HealthStatus {
-	status := HealthStatus{}
+func checkAPIHealth(client *http.Client, baseURL, token string) APIHealthStatus {
+	status := APIHealthStatus{}
 
 	// Check /health endpoint
 	healthReq, err := http.NewRequest("GET", baseURL+"/health", nil)
@@ -181,8 +181,8 @@ func getComplianceStatus(client *http.Client, baseURL, token string) ComplianceS
 	return status
 }
 
-func getApplicationStatus(client *http.Client, baseURL, token string) ApplicationStatus {
-	status := ApplicationStatus{}
+func getApplicationStatus(client *http.Client, baseURL, token string) ApplicationsStatus {
+	status := ApplicationsStatus{}
 
 	req, err := http.NewRequest("GET", baseURL+"/api/v1/apps", nil)
 	if err != nil {
@@ -205,9 +205,9 @@ func getApplicationStatus(client *http.Client, baseURL, token string) Applicatio
 	}
 
 	var apps struct {
-		Apps []struct {
-			Health string `json:"health"`
-		} `json:"apps"`
+		Applications []struct {
+			HealthStatus string `json:"healthStatus"`
+		} `json:"applications"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&apps); err != nil {
@@ -215,9 +215,9 @@ func getApplicationStatus(client *http.Client, baseURL, token string) Applicatio
 		return status
 	}
 
-	status.Total = len(apps.Apps)
-	for _, app := range apps.Apps {
-		if app.Health == "Healthy" {
+	status.Total = len(apps.Applications)
+	for _, app := range apps.Applications {
+		if app.HealthStatus == "Healthy" {
 			status.Healthy++
 		} else {
 			status.Degraded++
@@ -285,8 +285,8 @@ func displayStatus(status PlatformStatus) {
 		fmt.Printf("│ Status:      %s\n", formatError("UNREACHABLE"))
 		fmt.Printf("│ Error:       %s\n", status.APIHealth.Error)
 	} else {
-		healthIcon := formatHealthIcon(status.APIHealth.Healthy)
-		readyIcon := formatHealthIcon(status.APIHealth.Ready)
+		healthIcon := formatAPIHealthIcon(status.APIHealth.Healthy)
+		readyIcon := formatAPIHealthIcon(status.APIHealth.Ready)
 		fmt.Printf("│ Health:      %s %s\n", healthIcon, formatHealthText(status.APIHealth.Healthy))
 		fmt.Printf("│ Ready:       %s %s\n", readyIcon, formatHealthText(status.APIHealth.Ready))
 	}
@@ -315,9 +315,9 @@ func displayStatus(status PlatformStatus) {
 		fmt.Printf("│ Error:       %s\n", status.Applications.Error)
 	} else {
 		fmt.Printf("│ Total:       %d\n", status.Applications.Total)
-		fmt.Printf("│ Healthy:     %s %d\n", formatHealthIcon(true), status.Applications.Healthy)
+		fmt.Printf("│ Healthy:     %s %d\n", formatAPIHealthIcon(true), status.Applications.Healthy)
 		if status.Applications.Degraded > 0 {
-			fmt.Printf("│ Degraded:    %s %d\n", formatHealthIcon(false), status.Applications.Degraded)
+			fmt.Printf("│ Degraded:    %s %d\n", formatAPIHealthIcon(false), status.Applications.Degraded)
 		}
 	}
 	fmt.Println("└───────────────────────────────────────────────────────────┘")
@@ -346,7 +346,7 @@ func displayStatus(status PlatformStatus) {
 	fmt.Println()
 }
 
-func formatHealthIcon(healthy bool) string {
+func formatAPIHealthIcon(healthy bool) string {
 	if healthy {
 		return "✓"
 	}

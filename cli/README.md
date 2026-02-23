@@ -78,6 +78,44 @@ Shows:
 rdp version
 ```
 
+### Application Management
+
+```bash
+# List all Argo CD applications
+rdp apps list
+
+# Filter by project
+rdp apps list -p platform
+rdp apps list --project workloads
+
+# Output as JSON
+rdp apps list --json
+
+# Show detailed application status
+rdp apps status platform-api
+rdp apps status argocd
+
+# JSON output for detailed status
+rdp apps status platform-api --json
+
+# Trigger application sync
+rdp apps sync platform-api
+
+# Sync with pruning
+rdp apps sync platform-api --prune
+
+# Dry run (preview changes)
+rdp apps sync platform-api --dry-run
+
+# Sync specific revision
+rdp apps sync platform-api --revision abc1234
+```
+
+Shows:
+- **list**: Tabular view of all applications with name, project, sync/health status, repository, path, age, and last deployed time
+- **status**: Detailed view including metadata, source info, sync/health status, managed resources, deployment history, and conditions
+- **sync**: Initiates async sync operation with optional flags (prune, dry-run, revision)
+
 ### Infrastructure Management
 
 ```bash
@@ -138,8 +176,9 @@ cli/
 │   ├── config.go        # Config subcommands (init, view, set)
 │   ├── version.go       # Version command
 │   ├── status.go        # Platform health summary
+│   ├── apps.go          # Application commands (list, status, sync)
 │   ├── infra.go         # Infrastructure commands (list, status)
-│   └── ...              # Future command groups (apps, scaffold, compliance, etc.)
+│   └── ...              # Future command groups (scaffold, compliance, etc.)
 ├── go.mod
 └── README.md
 ```
