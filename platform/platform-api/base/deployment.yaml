@@ -63,7 +63,7 @@ spec:
 
       containers:
         - name: platform-api
-          image: homelabplatformacr.azurecr.io/platform-api:v0.1.6
+          image: homelabplatformacr.azurecr.io/platform-api:v0.1.7
           imagePullPolicy: Always
           securityContext:
             allowPrivilegeEscalation: false

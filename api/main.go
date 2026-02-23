@@ -18,6 +18,7 @@ import (
 	"github.com/rodmhgl/homelab-platform/api/internal/compliance"
 	"github.com/rodmhgl/homelab-platform/api/internal/infra"
 	"github.com/rodmhgl/homelab-platform/api/internal/scaffold"
+	"github.com/rodmhgl/homelab-platform/api/internal/secrets"
 	"github.com/rodmhgl/homelab-platform/api/internal/webhooks"
 )
 
@@ -115,8 +116,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Initialize secrets handler
+	secretsHandler, err := secrets.NewHandler(&secrets.Config{
+		KubeConfig: cfg.KubeConfig,
+		InCluster:  cfg.InCluster,
+	})
+	if err != nil {
+		slog.Error("Failed to initialize secrets handler", "error", err)
+		os.Exit(1)
+	}
+
 	// Initialize router
-	r := setupRouter(scaffoldHandler, argocdHandler, complianceHandler, infraHandler, webhookHandler)
+	r := setupRouter(scaffoldHandler, argocdHandler, complianceHandler, infraHandler, secretsHandler, webhookHandler)
 
 	// Create HTTP server
 	srv := &http.Server{
@@ -164,7 +175,7 @@ func main() {
 }
 
 // setupRouter configures the Chi router with middleware and routes
-func setupRouter(scaffoldHandler *scaffold.Handler, argocdHandler *argocd.Handler, complianceHandler *compliance.Handler, infraHandler *infra.Handler, webhookHandler *webhooks.Handler) *chi.Mux {
+func setupRouter(scaffoldHandler *scaffold.Handler, argocdHandler *argocd.Handler, complianceHandler *compliance.Handler, infraHandler *infra.Handler, secretsHandler *secrets.Handler, webhookHandler *webhooks.Handler) *chi.Mux {
 	r := chi.NewRouter()
 
 	// Global middleware
@@ -220,7 +231,7 @@ func setupRouter(scaffoldHandler *scaffold.Handler, argocdHandler *argocd.Handle
 
 		// Secrets endpoints
 		r.Route("/secrets", func(r chi.Router) {
-			r.Get("/{namespace}", notImplementedHandler("GET /api/v1/secrets/{namespace}"))
+			r.Get("/{namespace}", secretsHandler.HandleListSecrets)
 		})
 
 		// Investigation endpoints (HolmesGPT)
