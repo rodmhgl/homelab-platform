@@ -1,0 +1,70 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kagent
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "13"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: platform
+  sources:
+    # Source 1: kagent CRDs (Agent, Task, Provider)
+    - repoURL: ghcr.io/kagent-dev/kagent/helm
+      chart: kagent-crds
+      targetRevision: 0.7.0
+      helm:
+        releaseName: kagent-crds
+
+    # Source 2: kagent controller
+    - repoURL: ghcr.io/kagent-dev/kagent/helm
+      chart: kagent
+      targetRevision: 0.7.0
+      helm:
+        releaseName: kagent
+        valueFiles:
+          - $values/platform/kagent/values.yaml
+
+    # Source 3: Git repository for values + base resources
+    - repoURL: https://github.com/rodmhgl/homelab-platform.git
+      targetRevision: main
+      ref: values
+
+    # Source 4: Base resources (namespace, RBAC, Agent CRD)
+    - repoURL: https://github.com/rodmhgl/homelab-platform.git
+      targetRevision: main
+      path: platform/kagent/base
+
+    # Source 5: ExternalSecrets
+    - repoURL: https://github.com/rodmhgl/homelab-platform.git
+      targetRevision: main
+      path: platform/kagent/externalsecrets
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kagent-system
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true  # Agent CRD may not exist on first sync
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+  ignoreDifferences:
+    # Ignore helm metadata differences
+    - group: ""
+      kind: Secret
+      name: sh.helm.release.*
+      jsonPointers:
+        - /data

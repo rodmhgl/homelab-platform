@@ -6,6 +6,87 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added - kagent Natural Language Cluster Queries (2026-02-23)
+
+**Platform Component** - Completed task #38: kagent installation for conversational cluster introspection
+
+**Features:**
+
+**kagent Deployment (Wave 13):**
+- **Agent/Task CRD framework:** Kubernetes-native AI agent pattern for natural language queries
+  - Agent CRDs: Pre-configured AI assistants with domain-specific knowledge
+  - Task CRDs: Ephemeral query objects created per user question
+- **Three-source Argo CD Application:**
+  - Chart 1: `kagent-crds` (v0.7.0) — Agent/Task/Provider CRD definitions
+  - Chart 2: `kagent` (v0.7.0) — Controller Deployment + webhook
+  - Source 3-5: Git-based base resources (namespace, RBAC, default Agent, ExternalSecrets)
+- **Anthropic Claude Sonnet 4.5 integration:**
+  - Model: `claude-sonnet-4-5-20250929` (same as HolmesGPT for consistency)
+  - Temperature: 0.1 (deterministic for factual queries)
+  - Max tokens: 4096 per response
+  - Rate limits: 60 requests/min, 100K tokens/min
+- **Default `platform-agent` CRD:** Pre-configured with comprehensive platform context
+  - Argo CD GitOps architecture (App of Apps, ApplicationSets, sync waves)
+  - Crossplane self-service infrastructure (StorageBucket/Vault XRDs, resource trees)
+  - Compliance scoring formula (Gatekeeper + Trivy + Falco)
+  - Secrets management patterns (ESO + Workload Identity, Crossplane connection secrets)
+  - Container registry enforcement (homelabplatformacr.azurecr.io)
+- **Read-only RBAC:** Comprehensive cluster introspection without mutation risk
+  - Allowed verbs: `get`, `list`, `watch` only
+  - Covered resources: Core (Pods, Services, Deployments), Crossplane (Claims, XRs), Compliance (VulnerabilityReports, Constraints), GitOps (Argo CD Applications), Monitoring (ServiceMonitors)
+  - Prohibited: `create`, `update`, `delete`, `patch` on all resources
+- **ExternalSecret integration:** Reuses `anthropic-api-key` from bootstrap Key Vault (shared with HolmesGPT)
+- **Prometheus metrics:** ServiceMonitor enabled (task counts, duration, provider requests/errors)
+
+**Query Capabilities:**
+- Application health/deployment troubleshooting (Argo CD sync status, Pod failures)
+- Infrastructure provisioning status (Crossplane resource trees: Claim → XR → Managed Resources)
+- Compliance violations (Gatekeeper audit, policy explanations)
+- CVE vulnerabilities (Trivy VulnerabilityReports grouped by severity)
+- Runtime security events (Falco alerts via Platform API context)
+- GitOps state (OutOfSync apps, deployment history)
+
+**Configuration:**
+- Namespace: `kagent-system`
+- Controller replicas: 1 (stateless, horizontally scalable)
+- Resource limits: 500m CPU / 512Mi memory
+- Webhook enabled on port 9443
+- ServiceAccount: `kagent-sa` (custom read-only ClusterRole)
+
+**Documentation:**
+- `platform/kagent/README.md` — Comprehensive usage guide (architecture, examples, troubleshooting, integration patterns)
+- Example queries: "Why is my app unhealthy?", "Show me all Gatekeeper violations", "What CVEs are in portal-ui?"
+
+**Integration Points:**
+- **Unblocks Task #53:** Platform API `/api/v1/agent/ask` endpoint (create Task CRDs, stream responses)
+- **Unblocks Task #76:** CLI `rdp ask <query>` command (wraps Platform API)
+- **Portal UI ready:** AI Operations panel (#86) already implemented, needs backend integration
+
+**Cost Considerations:**
+- Estimated cost: ~$0.03/query (4K input + 2K output tokens)
+- Recommended rate limiting: 10 queries/user/hour via Platform API
+- Monitoring: Anthropic dashboard for usage tracking
+
+**Files Created:**
+- `platform/kagent/application.yaml` — Argo CD Application (wave 13, five sources)
+- `platform/kagent/values.yaml` — Helm values (Anthropic provider config)
+- `platform/kagent/base/namespace.yaml` — kagent-system namespace
+- `platform/kagent/base/rbac.yaml` — ServiceAccount + read-only ClusterRole + Binding
+- `platform/kagent/base/agent.yaml` — Default platform-agent with instructions
+- `platform/kagent/base/kustomization.yaml` — Base resource list
+- `platform/kagent/externalsecrets/kagent-secrets.yaml` — ExternalSecret for API key
+- `platform/kagent/externalsecrets/kustomization.yaml` — ExternalSecret resource list
+- `platform/kagent/README.md` — Usage documentation
+
+**Next Steps:**
+- Deploy via Argo CD sync (wave 13 after HolmesGPT wave 12)
+- Verify CRD registration and controller health
+- Test manual Task creation for query validation
+- Implement Platform API `/api/v1/agent/ask` endpoint (Task #53)
+- Implement CLI `rdp ask` command (Task #76)
+
+---
+
 ### Added - HolmesGPT AI Root Cause Analysis (2026-02-23)
 
 **Platform Component** - Completed task #39: HolmesGPT installation for AI-powered Kubernetes troubleshooting

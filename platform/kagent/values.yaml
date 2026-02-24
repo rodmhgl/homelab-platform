@@ -1,0 +1,58 @@
+# Helm values for kagent controller
+# Chart: oci://ghcr.io/kagent-dev/kagent/helm/kagent
+# Version: 0.7.0
+
+# Controller configuration
+controller:
+  replicas: 1
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  # Use custom ServiceAccount with read-only RBAC
+  serviceAccount:
+    create: false
+    name: kagent-sa
+
+# Provider configuration
+providers:
+  - name: anthropic-claude
+    type: anthropic
+    config:
+      # API key from ExternalSecret
+      apiKeySecretRef:
+        name: kagent-anthropic-secret
+        key: apiKey
+
+      # Model defaults (can be overridden per Agent)
+      defaultModel: claude-sonnet-4-5-20250929
+      defaultTemperature: 0.1
+      defaultMaxTokens: 4096
+
+      # Rate limiting (homelab-friendly)
+      rateLimit:
+        requestsPerMinute: 60
+        tokensPerMinute: 100000
+
+# Webhook configuration
+webhook:
+  enabled: true
+  port: 9443
+
+# Metrics
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    namespace: monitoring
+    interval: 30s
+
+# Logging
+logging:
+  level: info
+  format: json

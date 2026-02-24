@@ -1,0 +1,151 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kagent-sa
+  namespace: kagent-system
+  labels:
+    app.kubernetes.io/name: kagent
+    app.kubernetes.io/component: controller
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kagent-reader
+  labels:
+    app.kubernetes.io/name: kagent
+    app.kubernetes.io/component: rbac
+rules:
+  # Core resources - read-only
+  - apiGroups: [""]
+    resources:
+      - pods
+      - pods/log
+      - services
+      - configmaps
+      - endpoints
+      - namespaces
+      - nodes
+      - persistentvolumeclaims
+      - persistentvolumes
+      - events
+    verbs: ["get", "list", "watch"]
+
+  # Secrets - metadata only (no data access)
+  - apiGroups: [""]
+    resources:
+      - secrets
+    verbs: ["get", "list"]
+
+  # Apps resources
+  - apiGroups: ["apps"]
+    resources:
+      - deployments
+      - statefulsets
+      - daemonsets
+      - replicasets
+    verbs: ["get", "list", "watch"]
+
+  # Batch resources
+  - apiGroups: ["batch"]
+    resources:
+      - jobs
+      - cronjobs
+    verbs: ["get", "list", "watch"]
+
+  # Networking
+  - apiGroups: ["networking.k8s.io"]
+    resources:
+      - ingresses
+      - networkpolicies
+    verbs: ["get", "list", "watch"]
+
+  # Crossplane resources
+  - apiGroups:
+      - apiextensions.crossplane.io
+      - pkg.crossplane.io
+    resources:
+      - compositeresourcedefinitions
+      - compositions
+      - providers
+      - providerconfigs
+    verbs: ["get", "list", "watch"]
+
+  # Crossplane Claims and XRs (all API groups)
+  - apiGroups: ["*"]
+    resources:
+      - "*"
+    verbs: ["get", "list"]
+
+  # Gatekeeper compliance
+  - apiGroups: ["constraints.gatekeeper.sh"]
+    resources:
+      - "*"
+    verbs: ["get", "list", "watch"]
+
+  - apiGroups: ["templates.gatekeeper.sh"]
+    resources:
+      - constrainttemplates
+    verbs: ["get", "list", "watch"]
+
+  - apiGroups: ["status.gatekeeper.sh"]
+    resources:
+      - "*"
+    verbs: ["get", "list", "watch"]
+
+  # Trivy Operator CVE scanning
+  - apiGroups: ["aquasecurity.github.io"]
+    resources:
+      - vulnerabilityreports
+      - configauditreports
+      - rbacassessmentreports
+      - infraassessmentreports
+    verbs: ["get", "list", "watch"]
+
+  # Argo CD GitOps
+  - apiGroups: ["argoproj.io"]
+    resources:
+      - applications
+      - applicationsets
+      - appprojects
+    verbs: ["get", "list", "watch"]
+
+  # External Secrets Operator
+  - apiGroups: ["external-secrets.io"]
+    resources:
+      - externalsecrets
+      - secretstores
+      - clustersecretstores
+    verbs: ["get", "list", "watch"]
+
+  # Monitoring (ServiceMonitors, PrometheusRules)
+  - apiGroups: ["monitoring.coreos.com"]
+    resources:
+      - servicemonitors
+      - prometheusrules
+      - podmonitors
+    verbs: ["get", "list", "watch"]
+
+  # Custom Resource Definitions (for discovery)
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources:
+      - customresourcedefinitions
+    verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kagent-reader-binding
+  labels:
+    app.kubernetes.io/name: kagent
+    app.kubernetes.io/component: rbac
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kagent-reader
+subjects:
+  - kind: ServiceAccount
+    name: kagent-sa
+    namespace: kagent-system
