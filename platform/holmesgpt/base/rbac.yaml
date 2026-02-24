@@ -1,0 +1,122 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: holmesgpt
+  labels:
+    app.kubernetes.io/name: holmesgpt
+    app.kubernetes.io/part-of: platform
+    app.kubernetes.io/component: ai-operations
+rules:
+  # Core resources for root cause analysis
+  - apiGroups: [""]
+    resources:
+      - pods
+      - pods/log
+      - events
+      - services
+      - configmaps
+      - namespaces
+      - nodes
+      - persistentvolumeclaims
+      - persistentvolumes
+    verbs: ["get", "list", "watch"]
+
+  # Workloads
+  - apiGroups: ["apps"]
+    resources:
+      - deployments
+      - replicasets
+      - statefulsets
+      - daemonsets
+    verbs: ["get", "list", "watch"]
+
+  # Batch jobs
+  - apiGroups: ["batch"]
+    resources:
+      - jobs
+      - cronjobs
+    verbs: ["get", "list", "watch"]
+
+  # Networking
+  - apiGroups: ["networking.k8s.io"]
+    resources:
+      - ingresses
+      - networkpolicies
+    verbs: ["get", "list", "watch"]
+
+  # Crossplane (infrastructure-aware RCA)
+  - apiGroups: ["platform.example.com"]
+    resources:
+      - storagebuckets
+      - vaults
+      - xstoragebuckets
+      - xkeyvaults
+    verbs: ["get", "list", "watch"]
+
+  - apiGroups: ["azure.upbound.io"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
+
+  - apiGroups: ["pkg.crossplane.io"]
+    resources:
+      - providers
+      - configurations
+    verbs: ["get", "list", "watch"]
+
+  # Compliance context (Trivy CVEs)
+  - apiGroups: ["aquasecurity.github.io"]
+    resources:
+      - vulnerabilityreports
+      - configauditreports
+      - clustercompliancereports
+    verbs: ["get", "list", "watch"]
+
+  # Argo CD context
+  - apiGroups: ["argoproj.io"]
+    resources:
+      - applications
+      - appprojects
+    verbs: ["get", "list", "watch"]
+
+  # Gatekeeper violations
+  - apiGroups: ["constraints.gatekeeper.sh"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
+
+  - apiGroups: ["templates.gatekeeper.sh"]
+    resources:
+      - constrainttemplates
+    verbs: ["get", "list", "watch"]
+
+  # External Secrets context
+  - apiGroups: ["external-secrets.io"]
+    resources:
+      - externalsecrets
+      - secretstores
+      - clustersecretstores
+    verbs: ["get", "list", "watch"]
+
+  # Metrics (if metrics-server installed)
+  - apiGroups: ["metrics.k8s.io"]
+    resources:
+      - pods
+      - nodes
+    verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: holmesgpt
+  labels:
+    app.kubernetes.io/name: holmesgpt
+    app.kubernetes.io/part-of: platform
+    app.kubernetes.io/component: ai-operations
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: holmesgpt
+subjects:
+  - kind: ServiceAccount
+    name: holmesgpt
+    namespace: holmesgpt

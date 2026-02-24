@@ -1,0 +1,114 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: holmesgpt
+  namespace: holmesgpt
+  labels:
+    app.kubernetes.io/name: holmesgpt
+    app.kubernetes.io/part-of: platform
+    app.kubernetes.io/component: ai-operations
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: holmesgpt
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: holmesgpt
+        app.kubernetes.io/part-of: platform
+        app.kubernetes.io/component: ai-operations
+    spec:
+      serviceAccountName: holmesgpt
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: holmesgpt
+          image: homelabplatformacr.azurecr.io/holmesgpt:v1.0.0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - name: http
+              containerPort: 5050
+              protocol: TCP
+          env:
+            # LLM Configuration
+            - name: MODEL
+              value: "anthropic/claude-sonnet-4-20250514"
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: holmesgpt-secrets
+                  key: ANTHROPIC_API_KEY
+
+            # Server Configuration
+            - name: HOLMES_HOST
+              value: "0.0.0.0"
+            - name: HOLMES_PORT
+              value: "5050"
+
+            # Default enabled toolsets (Kubernetes core, logs, internet)
+            - name: ENABLED_BY_DEFAULT_TOOLSETS
+              value: "kubernetes/core,kubernetes/logs,internet"
+
+            # Prometheus integration
+            - name: PROMETHEUS_URL
+              value: "http://monitoring-kube-prometheus-prometheus.monitoring:9090"
+            - name: DISABLE_PROMETHEUS_TOOLSET
+              value: "false"
+
+            # Performance tuning
+            - name: TEMPERATURE
+              value: "0.00000001"
+            - name: LLM_REQUEST_TIMEOUT
+              value: "600"
+            - name: TOOL_MEMORY_LIMIT_MB
+              value: "1500"
+
+            # Disable telemetry and Robusta SaaS features
+            - name: ENABLE_TELEMETRY
+              value: "false"
+            - name: ROBUSTA_AI
+              value: "false"
+            - name: DEVELOPMENT_MODE
+              value: "false"
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 2Gi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: cache
+              mountPath: /.cache
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: cache
+          emptyDir: {}

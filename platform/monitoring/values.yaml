@@ -175,10 +175,10 @@ alertmanager:
           continue: true
 
     receivers:
-      # HolmesGPT webhook receiver (will be configured after HolmesGPT install)
+      # HolmesGPT webhook receiver
       - name: 'holmesgpt'
         webhook_configs:
-          - url: 'http://holmesgpt.holmesgpt.svc.cluster.local:8080/webhook'
+          - url: 'http://holmesgpt.holmesgpt.svc.cluster.local:5050/api/investigate'
             send_resolved: true
 
       # Default null receiver

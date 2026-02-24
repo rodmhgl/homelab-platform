@@ -6,6 +6,563 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added - HolmesGPT AI Root Cause Analysis (2026-02-23)
+
+**Platform Component** - Completed task #39: HolmesGPT installation for AI-powered Kubernetes troubleshooting
+
+**Features:**
+
+**HolmesGPT Deployment (Wave 12):**
+- **FastAPI server:** Python-based investigation engine with Claude Sonnet 4.5 LLM
+- **Custom Docker image:** Built from source (no public registry available)
+  - Image: `homelabplatformacr.azurecr.io/holmesgpt:v1.0.0`
+  - Includes kubectl, argocd CLI, kube-lineage for comprehensive cluster analysis
+- **Alertmanager webhook integration:** Automatic investigations for critical/high alerts
+  - Webhook: `http://holmesgpt.holmesgpt.svc.cluster.local:5050/api/investigate`
+  - Configured in `platform/monitoring/values.yaml`
+- **Comprehensive RBAC:** Read-only cluster access across all platform resources
+  - Core: pods, logs, events, services, nodes
+  - Workloads: deployments, statefulsets, daemonsets, jobs
+  - Crossplane: Claims, XRs, Managed Resources (infrastructure context)
+  - Compliance: VulnerabilityReports (Trivy), Constraints (Gatekeeper)
+  - Argo CD: Applications, AppProjects (GitOps context)
+- **API endpoints:**
+  - `POST /api/investigate` — Trigger investigation (synchronous)
+  - `POST /api/stream/investigate` — Streaming investigation (SSE)
+  - `GET /healthz` — Liveness probe
+  - `GET /readyz` — Readiness probe (validates LLM access)
+- **Secrets management:** Anthropic API key via ExternalSecret from bootstrap Key Vault
+- **Prometheus integration:** Query metrics for CPU/memory usage, pod restarts
+- **Enabled toolsets:** kubernetes/core, kubernetes/logs, prometheus, internet
+
+**Configuration:**
+- LLM: `anthropic/claude-sonnet-4-20250514` (200K context window)
+- Temperature: 0.00000001 (deterministic investigations)
+- Timeout: 600s per investigation
+- Memory limit: 2Gi (handles large cluster state)
+- Replicas: 1 (stateless, horizontally scalable)
+
+**Documentation:**
+- `platform/holmesgpt/README.md` — Comprehensive deployment guide (architecture, configuration, troubleshooting)
+- `platform/holmesgpt/BUILD.md` — Docker image build instructions (multi-arch support)
+
+**Integration Points:**
+- **Task #36 completed:** Alertmanager webhook configured (was pending)
+- **Task #52 unblocked:** Platform API can now implement `/api/v1/investigate` endpoints
+- **Task #75 unblocked:** CLI `rdp investigate` command can trigger investigations
+
+**Files Changed:**
+- `platform/holmesgpt/` — New directory with 12 manifest files
+- `platform/monitoring/values.yaml` — Updated Alertmanager webhook URL (port 8080→5050, endpoint /webhook→/api/investigate)
+
+**Deployment:**
+- Wave 12 (after monitoring wave 8, platform-api wave 10)
+- Namespace: `holmesgpt`
+- Service: ClusterIP at `holmesgpt.holmesgpt.svc.cluster.local:5050`
+
+### Added - Portal UI AI Operations Panel (2026-02-23)
+
+**Portal UI Enhancement** - Completed task #86: AI Operations panel with kagent chat and HolmesGPT investigation
+
+**Features:**
+
+**AI Operations Panel (7th dashboard panel):**
+- **Tab-based UI:** Two tabs (Chat, Investigate) with independent workflows
+- **kagent Chat Interface:**
+  - Natural language queries for Kubernetes operations
+  - Chat message history with user/assistant differentiation
+  - Example questions as clickable prompts
+  - Real-time message display with timestamps
+  - Optimistic updates (user message appears immediately)
+- **HolmesGPT Investigation Form:**
+  - Application dropdown (populated from `/api/v1/apps`)
+  - Issue description textarea
+  - "Start Investigation" button with loading state
+  - Investigation results display (status, root cause, remediation steps)
+  - Status polling support (pending → running → completed/failed)
+- **Graceful Degradation:**
+  - Service unavailable (501) handled with friendly informational banners
+  - No hard errors when backend not deployed
+  - Educational messaging about service deployment status
+  - Links to relevant tasks (#38, #39, #52, #53)
+
+**API Integration Layer:**
+- **New file:** `portal/src/api/aiops.ts` (3 methods)
+  - `ask(question)` → POST `/api/v1/agent/ask`
+  - `investigate(application, issue)` → POST `/api/v1/investigate`
+  - `getInvestigation(id)` → GET `/api/v1/investigate/{id}`
+- **New types:** `portal/src/api/types.ts`
+  - `AskRequest`, `AskResponse` (kagent)
+  - `InvestigateRequest`, `InvestigateResponse`, `Investigation` (HolmesGPT)
+
+**State Management:**
+- Local component state: Tab selection, chat history, form inputs, investigation results
+- TanStack Query mutations: `askMutation`, `investigateMutation`
+- Optimistic UI updates for chat messages
+- Error handling with service-specific messages
+
+**Styling & UX:**
+- Follows existing panel patterns (StatusCard wrapper, Badge components)
+- Tab switcher with active state (blue border + text)
+- Chat bubbles: Blue for user, white for assistant
+- Chat scrollable container (h-64, max-h-96)
+- Form validation: Required fields, disabled states
+- Loading spinners during async operations
+- Color-coded status badges (pending=info, running=info, completed=default, failed=danger)
+
+**Technical Details:**
+- File: `portal/src/components/dashboard/AIOperationsPanel.tsx` (370 lines)
+- Integration: `portal/src/pages/Dashboard.tsx` (added 7th panel to grid)
+- Build verified: TypeScript compilation successful
+- Ready for backend integration (no code changes needed when services deploy)
+
+**Next Steps (Backend Prerequisites):**
+- Task #38: Install kagent in cluster
+- Task #39: Install HolmesGPT in cluster
+- Task #52: Implement `/api/v1/investigate/*` endpoints in Platform API
+- Task #53: Implement `/api/v1/agent/ask` endpoint in Platform API
+
+### Added - Portal UI Scaffold Form (2026-02-23)
+
+**Portal UI Enhancement** - Completed task #85: Interactive scaffold form for creating new services
+
+**Features:**
+
+**Scaffold Form (`/scaffold` route):**
+- **17 form fields** with comprehensive validation and conditional logic
+- **Template selection:** go-service (hardcoded; python-service pending)
+- **Project configuration:** Name (DNS label validation), description (optional, 500 char max)
+- **Service configuration:** HTTP port (1024-65535), gRPC toggle + port, database toggle
+- **Infrastructure dependencies:** Storage toggle (location + replication), Key Vault toggle (location + SKU)
+- **GitHub configuration:** Organization (required), repository (defaults to project name), private repo (always true)
+- **Conditional fields:** gRPC/storage/vault fields show/hide based on checkbox state
+- **Real-time validation:** DNS label format, port ranges, port uniqueness, required fields
+- **Success UI:** Modal with repo URL, Argo CD app name, platform config path, next steps
+- **Error handling:** Inline field errors + top-level submission error alert
+
+**Validation Rules:**
+- Project name: 3-63 characters, lowercase alphanumeric with hyphens, no leading/trailing hyphens
+- HTTP/gRPC ports: 1024-65535 range, must differ from each other
+- GitHub org: Required field
+- All validations match CLI `rdp scaffold create` behavior
+
+**User Experience:**
+- Four logical sections: Project, Service, Infrastructure, GitHub
+- Auto-fill GitHub repo from project name if empty
+- Reset button to clear form
+- Loading state during submission ("Creating Service...")
+- Success modal with actionable next steps (clone, build, test, verify)
+
+**Type Safety Fix (CRITICAL):**
+- Fixed TypeScript `ScaffoldRequest`/`ScaffoldResponse` to match Go API JSON tags exactly
+- Previous speculative types caused runtime errors (wrong field names)
+- Now follows mandatory pattern: Read Go API structs → Match JSON tags → Verify with build
+
+**Technical Details:**
+- File: `portal/src/pages/Scaffold.tsx` (600+ lines)
+- Types: `portal/src/api/types.ts` (updated with 24 new fields)
+- State management: Vanilla React hooks (`useState`, no form library)
+- Submission: TanStack Query mutation with `scaffoldApi.create()`
+- Styling: Tailwind CSS with consistent form element classes
+- Accessibility: Label associations, error messages, disabled states
+
+**Integration:**
+- API endpoint: `POST /api/v1/scaffold` (task #51) ✅
+- Argo CD ApplicationSet: Auto-discovers new apps via `apps/*/config.json` (task #8) ✅
+- go-service template: Copier template with 23 files (task #55) ✅
+
+### Added - CLI Portal Command (2026-02-23)
+
+**CLI Enhancement** - Completed task #77: `rdp portal open` command for quick Portal UI access
+
+**Features:**
+
+**Portal Open Command:**
+- **`rdp portal open`** - Launch Platform Portal web interface in default browser
+  - Cross-platform support: Linux/WSL (xdg-open), macOS (open), Windows (cmd /c start)
+  - URL precedence: `--url` flag → `portal_url` config → derived from `api_base_url` → default
+  - Smart URL derivation: Handles multiple API URL patterns (api., api-, platform., platform-api.)
+  - `--print` flag: Output URL without opening browser (useful for scripts/CI)
+  - Graceful fallback: Prints URL with instructions if browser launch fails
+  - No API dependency: Pure client-side operation
+
+**Command Examples:**
+```bash
+# Open production Portal
+rdp portal open
+
+# Open local dev Portal (port-forward scenario)
+rdp portal open --url http://localhost:8080
+
+# Print URL for scripting
+rdp portal open --print
+```
+
+**Configuration:**
+```yaml
+# Optional in ~/.rdp/config.yaml
+portal_url: http://portal.rdp.azurelaboratory.com
+```
+
+**Technical Details:**
+- Files: `cli/cmd/portal.go`, `cli/cmd/portal_open.go`
+- Config schema: Added optional `portal_url` field (backward compatible)
+- URL validation: Validates URL format before opening
+- Platform detection: Uses `runtime.GOOS` for OS-specific browser launchers
+
+### Added - CLI Scaffold Command (2026-02-23)
+
+**CLI Enhancement** - Completed task #72: `rdp scaffold create` command for interactive service scaffolding
+
+**Features:**
+
+**Scaffold Create Command:**
+- **`rdp scaffold create`** - Interactive TUI wizard for creating new services from Copier templates
+  - 14-state flow: welcome → template selection → project config → feature toggles → GitHub config → confirmation
+  - Template selection: Currently supports `go-service` (Python template pending)
+  - Project configuration: Name (DNS label validated), description (optional), HTTP port (default 8080)
+  - gRPC configuration: Enable/disable toggle, gRPC port selection (default 9090, must differ from HTTP port)
+  - Feature toggles: Database support, Storage (creates StorageBucket Claim), Key Vault (creates Vault Claim)
+  - GitHub integration: Organization/owner (auto-detected from Git remote), repository name (defaults to project name)
+  - Git auto-detection: Parses `git remote get-url origin` to pre-fill GitHub org
+  - Progressive disclosure: Completed fields shown with checkmarks as wizard progresses
+  - Extended timeout: 60 seconds to accommodate Copier execution + GitHub repo creation + Argo CD onboarding
+  - Error handling: Retry on failure (R key), clear error messages from API
+  - Success screen: Shows repo URL, Argo CD app name, platform config path, clone/build/test instructions
+
+**What Happens When You Run It:**
+1. Platform API executes Copier template with your configuration
+2. Creates GitHub repository at `github.com/{org}/{repo}`
+3. Pushes scaffolded code to GitHub
+4. Adds `apps/{name}/config.json` to platform repository
+5. Argo CD ApplicationSet discovers new config within 60 seconds
+6. Application syncs to cluster automatically
+
+**Command Examples:**
+```bash
+# Launch interactive wizard
+rdp scaffold create
+
+# Follow prompts to configure:
+# - Select template (go-service)
+# - Enter project name (my-api)
+# - Enter description (optional)
+# - Configure HTTP port (8080)
+# - Enable gRPC? (Y/N)
+# - Configure gRPC port (9090, if enabled)
+# - Enable database? (Y/N)
+# - Enable storage? (Y/N)  # Creates StorageBucket Claim
+# - Enable Key Vault? (Y/N)  # Creates Vault Claim
+# - Enter GitHub org (auto-detected: rodmhgl)
+# - Enter repo name (defaults to project name)
+# - Confirm (Y/N)
+```
+
+**Example Output:**
+```
+✓ Service Scaffolded Successfully!
+
+Argo CD will sync this application within 60 seconds.
+
+Details:
+  Repository:        https://github.com/rodmhgl/my-api
+  Argo CD App:       my-api
+  Platform Config:   apps/my-api/config.json
+
+Next Steps:
+  1. Clone repository: git clone https://github.com/rodmhgl/my-api
+  2. Build service:    cd my-api && make build
+  3. Run tests:        make test
+  4. Verify Argo CD:   rdp apps status my-api
+```
+
+**Technical Details:**
+- **State machine:** 14 states with conditional flow (skips gRPC port if disabled)
+- **Validation:** DNS label format, port range (1024-65535), port conflict detection
+- **API contract:** Matches `ScaffoldRequest`/`ScaffoldResponse` from Platform API exactly
+- **HTTP client:** 60-second timeout (vs 30s for other commands) to accommodate multi-step scaffolding process
+
+### Added - CLI Secrets Command (2026-02-23)
+
+**CLI Enhancement** - Completed task #74: `rdp secrets list` command for unified secrets visibility
+
+**Features:**
+
+**Secrets List Command:**
+- **`rdp secrets list <namespace>`** - List all secrets in a namespace (ExternalSecrets + Crossplane connection secrets)
+  - Unified view of ESO-managed ExternalSecrets and Crossplane connection secrets
+  - Tabular view: NAME, NAMESPACE, KIND, STATUS, KEYS, SOURCE CLAIM, AGE
+  - Status icons with color coding: ✓ Ready/Synced (green), ✗ Error (red), ○ Unknown (gray)
+  - Keys display: Comma-separated list for ≤3 keys, "N keys" summary for >3 keys
+  - Source Claim: Shows originating Crossplane Claim for connection secrets (name + kind)
+  - Summary footer: Total count with breakdown (ExternalSecrets vs connection secrets)
+  - Flags: `--kind external|connection` (filter by type), `--json` (output format)
+  - ⚠️ **Security**: Never displays secret values, only metadata
+
+**Command Examples:**
+```bash
+# List all secrets in a namespace
+rdp secrets list default
+rdp secrets list platform
+
+# Filter by kind
+rdp secrets list default --kind external      # ExternalSecrets only
+rdp secrets list default --kind connection    # Connection secrets only
+
+# JSON output for scripting
+rdp secrets list platform --json
+```
+
+**Example Output:**
+```
+NAME                NAMESPACE  KIND            STATUS        KEYS                    SOURCE CLAIM              AGE
+----                ---------  ----            ------        ----                    ------------              ---
+demo-storage-conn   default    Secret          ✓ Synced      3 keys                  demo-storage (StorageBucket)  3d
+github-pat          platform   ExternalSecret  ✓ Ready       token                   -                         8d
+api-creds           default    ExternalSecret  ✗ Error       -                       -                         1h
+
+Total: 3 secrets (2 ExternalSecrets, 1 connection secret)
+```
+
+**Technical Details:**
+- **Type Safety:** All Go types match Platform API JSON tags exactly (`creationTimestamp` is `time.Time`, `sourceClaim` is `*ResourceRef`)
+- **Client-side Filtering:** `--kind` flag filters response array locally (API returns all secrets in namespace)
+- **Consistent Patterns:** Follows `compliance_violations.go` table formatting, reuses `formatAge()` helper from `infra.go`
+- **Error Handling:** Clear messages for 400 (bad request), 404 (namespace not found), 500 (API error)
+- **HTTP Timeout:** 15s for list operations
+
+**Implementation Files:**
+- `cli/cmd/secrets.go` - Parent command + shared helper functions
+- `cli/cmd/secrets_list.go` - List subcommand implementation
+
+**Dependencies Met:**
+- Platform API `/api/v1/secrets/{namespace}` endpoint (Task #50) ✅ Complete
+
+---
+
+### Added - CLI Compliance Commands (2026-02-23)
+
+**CLI Enhancement** - Completed task #73: `rdp compliance` command group for security and policy visibility
+
+**Features:**
+
+**Compliance Command Group:**
+- **`rdp compliance summary`** - View overall compliance score and aggregate metrics
+  - Displays compliance score (0-100) with color coding: ✓ (≥90 green), ⚠ (70-89 amber), ✗ (<70 red)
+  - Shows policy violations count, vulnerabilities breakdown (Critical/High counts with color)
+  - Flag: `--json` for machine-readable output
+
+- **`rdp compliance policies`** - List active Gatekeeper ConstraintTemplates
+  - Tabular view: NAME, KIND, SCOPE, DESCRIPTION
+  - Shows cluster-wide vs namespaced policy scope
+  - Flag: `--json` for machine-readable output
+
+- **`rdp compliance violations`** - View Gatekeeper policy violations
+  - Tabular view: CONSTRAINT, KIND, RESOURCE, NAMESPACE, MESSAGE
+  - Shows detailed context for each violation
+  - Flags: `--namespace` (filter by namespace), `--json` (output format)
+
+- **`rdp compliance vulns`** - List vulnerabilities from Trivy Operator scans
+  - Tabular view: SEVERITY, CVE-ID, IMAGE, PACKAGE, FIXED, WORKLOAD
+  - Color-coded severity: CRITICAL/HIGH (red), MEDIUM (yellow), LOW (gray)
+  - Summary footer shows breakdown across CRITICAL/HIGH/MEDIUM/LOW
+  - Flags: `--severity CRITICAL|HIGH|MEDIUM|LOW` (filter), `--json` (output format)
+
+- **`rdp compliance events`** - View Falco runtime security events
+  - Tabular view: TIME, SEVERITY, RULE, RESOURCE, MESSAGE
+  - Human-readable timestamps (e.g., "2m ago", "1h ago")
+  - Color-coded severity: ERROR (red), WARNING (yellow), NOTICE (white)
+  - Summary footer shows breakdown by severity
+  - Flags: `--namespace` (filter), `--severity ERROR|WARNING|NOTICE` (filter), `--since 1h|30m|24h` (time window), `--limit N` (max events, default 50), `--json` (output format)
+
+**Command Examples:**
+```bash
+# View compliance summary
+rdp compliance summary
+
+# List Gatekeeper policies
+rdp compliance policies
+
+# View policy violations (all namespaces)
+rdp compliance violations
+
+# View violations in specific namespace
+rdp compliance violations --namespace platform
+
+# List all vulnerabilities
+rdp compliance vulns
+
+# List only critical CVEs
+rdp compliance vulns --severity CRITICAL
+
+# View recent security events
+rdp compliance events --since 1h --limit 20
+
+# View error-level events only
+rdp compliance events --severity ERROR
+
+# JSON output for scripting
+rdp compliance summary --json
+rdp compliance events --json
+```
+
+**API Integration:**
+- **Endpoints**:
+  - `GET /api/v1/compliance/summary` - Compliance score and metrics
+  - `GET /api/v1/compliance/policies` - Gatekeeper ConstraintTemplates
+  - `GET /api/v1/compliance/violations?namespace=` - Policy violations with filtering
+  - `GET /api/v1/compliance/vulnerabilities?severity=` - Trivy CVE scans with filtering
+  - `GET /api/v1/compliance/events?namespace=&severity=&since=&limit=` - Falco security events with multi-dimensional filtering
+- **Timeout**: 10-15 seconds
+- **Query Parameters**: Clean encoding via `url.Values` for namespace, severity, time window filters
+
+**Implementation Details:**
+- **Type Safety**: All types match API JSON tags exactly
+  - `ComplianceScore` is `float64` (not `int`)
+  - `VulnerabilitiesBySeverity` is `map[string]int` (not individual fields)
+  - Security events use `Severity` field (not `Priority`)
+- **Severity Validation**: Enums validated before API call (CRITICAL/HIGH/MEDIUM/LOW for CVEs, ERROR/WARNING/NOTICE for events)
+- **Duration Parsing**: `--since` flag uses Go `time.ParseDuration` for validation (e.g., "1h", "30m", "24h")
+- **Color Coding**: Shared severity color helper across all commands
+- **Timestamp Formatting**: RFC3339 parsing → human-readable age display
+- **Consistent Patterns**: Follows `apps.go`/`infra.go` conventions (tabwriter, JSON output, error handling)
+
+**Files Added:**
+- `cli/cmd/compliance.go` - Root command + shared helpers (color codes, timestamp formatting, JSON output)
+- `cli/cmd/compliance_summary.go` - Compliance score overview
+- `cli/cmd/compliance_policies.go` - Gatekeeper policy list
+- `cli/cmd/compliance_violations.go` - Policy violations with namespace filtering
+- `cli/cmd/compliance_vulns.go` - CVE list with severity filtering
+- `cli/cmd/compliance_events.go` - Falco events with multi-dimensional filtering
+
+**Documentation Updated:**
+- `cli/IMPLEMENTATION_STATUS.md` - Moved #73 from Pending to Completed with detailed command documentation
+- `cli/README.md` - Added "Compliance Commands" section with usage examples
+- `homelab-platform/CHANGELOG.md` - Added v0.3.0 changelog entry
+- `homelab-platform/CLAUDE.md` - Updated CLI status line to reflect compliance commands completion
+
+---
+
+### Added - CLI Infrastructure Deletion Command (2026-02-23)
+
+**CLI Enhancement** - Completed task #71: `rdp infra delete` command with GitOps workflow and safety confirmation
+
+**Features:**
+
+**Infrastructure Deletion via GitOps:**
+- **`rdp infra delete <kind> <name>`** - Safely remove Crossplane Claims and Azure resources
+  - **Required Flags**: `--repo-owner`, `--repo-name` (explicit to prevent accidental deletions)
+  - **Optional Flags**: `--namespace` (default: default), `--force` (skip confirmation), `--json` (output format)
+  - **Safety Confirmation**: User must type the exact Claim name to confirm deletion (unless --force)
+  - **Warning Display**: Shows what will be deleted (Claim, Git file, Azure resources) with visual ⚠️ indicators
+  - **GitOps Flow**:
+    1. Removes `k8s/claims/<name>.yaml` from GitHub repository
+    2. Argo CD syncs within 60 seconds and removes Claim from cluster
+    3. Crossplane deletes all managed Azure resources (ResourceGroup, StorageAccount/Key Vault, etc.)
+  - **Supports**: `storage`/`StorageBucket` and `vault`/`Vault` kinds
+
+**Command Examples:**
+```bash
+# Delete with confirmation prompt
+rdp infra delete storage demo-storage --repo-owner myorg --repo-name myapp
+
+# Delete with force (skip confirmation)
+rdp infra delete vault prod-vault --namespace production --repo-owner myorg --repo-name myapp --force
+
+# Delete with JSON output
+rdp infra delete storage test-bucket --repo-owner myorg --repo-name myapp --json
+```
+
+**Safety Mechanisms:**
+- **Explicit Repository Flags**: Unlike create commands (which auto-detect Git), delete requires explicit `--repo-owner` and `--repo-name` to force user awareness
+- **Confirmation Prompt**: User must type the exact Claim name (case-sensitive) to proceed
+- **Warning Display**: Clear visual indication of destructive action with list of what will be deleted
+- **Force Flag**: Available for CI/CD pipelines but requires explicit opt-in
+
+**Output Format:**
+
+*Human-readable (default):*
+```
+╔═══════════════════════════════════════════════════════════╗
+║  ⚠️  WARNING: Destructive Operation                        ║
+╚═══════════════════════════════════════════════════════════╝
+
+You are about to delete infrastructure:
+
+  Kind:       StorageBucket
+  Name:       demo-storage
+  Namespace:  default
+  Repository: myorg/myapp
+
+This will:
+  1. Remove k8s/claims/demo-storage.yaml from Git
+  2. Trigger Argo CD sync (removes Claim from cluster)
+  3. Delete all Azure resources (ResourceGroup, StorageAccount, BlobContainer)
+
+⚠️  This action is IRREVERSIBLE. Data in Azure resources will be lost.
+
+Type the Claim name 'demo-storage' to confirm: _
+```
+
+*Success Output:*
+```
+✓ Claim deleted successfully
+
+Kind:            StorageBucket
+Name:            demo-storage
+Namespace:       default
+Repository:      https://github.com/myorg/myapp
+Commit:          abc123def456...
+File Removed:    k8s/claims/demo-storage.yaml
+
+Next Steps:
+  • Argo CD will sync within 60 seconds
+  • Crossplane will delete Azure resources (ResourceGroup, StorageAccount, BlobContainer)
+  • Monitor progress: rdp infra status storage demo-storage
+```
+
+**API Integration:**
+- **Endpoint**: `DELETE /api/v1/infra/{kind}/{name}?namespace={namespace}`
+- **Request Body**: `DeleteClaimRequest` with `repoOwner`, `repoName`
+- **Response**: `DeleteClaimResponse` with `success`, `commitSha`, `filePath`, `repoUrl`
+- **Timeout**: 15 seconds
+- **Error Handling**: 404 (Claim not found), 400 (missing fields), 500 (server error)
+
+**Implementation Details:**
+- **Type Matching**: Request/response types match API JSON tags exactly (`commitSha` not `commitSHA`)
+- **Kind Normalization**: User input (`storage`, `vault`) normalized to API format via `normalizeKindForAPI()`
+- **Error Messages**: Clear, actionable errors for all failure scenarios
+- **JSON Output**: Machine-readable format for CI/CD integration
+
+**Files Added:**
+- `cli/cmd/infra_delete.go` - 245 lines (NEW) - Delete command with confirmation prompt
+
+**Files Modified:**
+- `cli/cmd/infra.go` - Updated help text and registered `infraDeleteCmd`
+- `cli/README.md` - Added delete examples and safety warnings
+- `cli/IMPLEMENTATION_STATUS.md` - Marked #71 complete, updated status from "Partial" to "Complete"
+- `homelab-platform/CLAUDE.md` - Updated cli/ status line to include delete command
+- `homelab-platform/README.md` - Updated CLI progress tracker
+- `homelab-platform/CHANGELOG.md` - Added this entry
+
+**CLI Progress:**
+- ✅ Root command + config management (#65)
+- ✅ Version command
+- ✅ `rdp status` - Platform health summary (#66)
+- ✅ `rdp infra list/status` - Infrastructure Claims (#68)
+- ✅ `rdp infra create storage/vault` - Interactive infra creation (#69, #70)
+- ✅ `rdp infra delete` - GitOps infra deletion (#71) **← NEW**
+- ✅ `rdp apps list/status/sync` - Application management (#67)
+- ⬜ `rdp compliance` - Policy violations, CVEs, events (#73)
+- ⬜ `rdp secrets` - Secret management (#74)
+- ⬜ `rdp scaffold create` - Interactive project creation (#72)
+- ⬜ `rdp investigate` - HolmesGPT integration (#75)
+- ⬜ `rdp ask` - kagent natural language (#76)
+
+**Next:** Compliance commands (#73) or scaffold creation (#72).
+
+---
+
 ### Added - CLI Interactive Infrastructure Creation (2026-02-23)
 
 **CLI Enhancement** - Completed tasks #69 and #70: Interactive `rdp infra create` commands with bubbletea TUI
@@ -86,16 +643,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - ✅ Version command
 - ✅ `rdp status` - Platform health summary (#66)
 - ✅ `rdp infra list/status` - Infrastructure Claims (#68)
-- ✅ `rdp infra create storage/vault` - Interactive infra creation (#69, #70) **← NEW**
+- ✅ `rdp infra create storage/vault` - Interactive infra creation (#69, #70)
+- ✅ `rdp infra delete` - GitOps infrastructure deletion (#71) **← NEW**
 - ✅ `rdp apps list/status/sync` - Application management (#67)
-- ⬜ `rdp infra delete` - Interactive infra deletion (#71)
 - ⬜ `rdp compliance` - Policy violations, CVEs, events (#73)
 - ⬜ `rdp secrets` - Secret management (#74)
 - ⬜ `rdp scaffold create` - Interactive project creation (#72)
 - ⬜ `rdp investigate` - HolmesGPT integration (#75)
 - ⬜ `rdp ask` - kagent natural language (#76)
 
-**Next:** Infrastructure deletion command (#71) or compliance commands (#73).
+**Next:** Compliance commands (#73) or scaffold creation (#72).
 
 ---
 
